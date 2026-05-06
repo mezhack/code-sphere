@@ -1,0 +1,17 @@
+# Gerados pelo setup.sh / gerar.sh — não versionar
+docker-compose.yml
+nginx.conf
+senhas.txt
+traefik/dynamic/routes.yml
+
+# Dados dos alunos — NUNCA versionar (privacidade + segurança)
+alunos/
+portal-data/
+backups/
+
+# Temporários
+*.tmp
+*.tar.gz
+__pycache__/
+*.pyc
+.env.local

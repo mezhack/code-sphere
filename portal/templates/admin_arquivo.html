@@ -1,0 +1,72 @@
+{% extends "base.html" %}
+{% block titulo %}{{ nome }} — {{ aluno }}{% endblock %}
+{% block classe_extra %}wide{% endblock %}
+{% block conteudo %}
+
+<!-- Highlight.js via CDN -->
+<link rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github.min.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/python.min.js"></script>
+
+<div class="topbar">
+  <div>
+    <a href="{{ url_for('admin_arquivos', aluno=aluno) }}"
+       style="color:#1f4e79;text-decoration:none;font-size:14px">
+      ← {{ aluno }}
+    </a>
+    <span style="color:#9ca3af;margin:0 6px">/</span>
+    <strong>{{ nome }}</strong>
+  </div>
+  <div style="display:flex;gap:8px">
+    <a href="{{ url_for('admin_arquivos', aluno=aluno) }}"
+       class="btn btn-sm" style="background:#6b7280">Voltar</a>
+    <a href="{{ url_for('admin_painel') }}"
+       class="btn btn-sm" style="background:#6b7280">Painel</a>
+  </div>
+</div>
+
+{% if erro %}
+  <div class="aviso">{{ erro }}</div>
+
+{% elif conteudo is not none %}
+  <div style="display:flex;justify-content:space-between;align-items:center;
+              margin-bottom:8px;font-size:13px;color:#6b7280">
+    <span>{{ caminho }}</span>
+    <span>{{ conteudo.splitlines()|length }} linhas</span>
+  </div>
+
+  <div style="border:1px solid #e5e7eb;border-radius:8px;overflow:hidden">
+    <div style="background:#f5f7fa;padding:8px 16px;font-size:12px;
+                color:#6b7280;border-bottom:1px solid #e5e7eb;
+                display:flex;justify-content:space-between">
+      <span>{{ nome }}</span>
+      <span>{{ aluno }}</span>
+    </div>
+    <div style="overflow-x:auto;max-height:75vh">
+      <pre style="margin:0"><code class="language-{{ ext[1:] if ext else 'plaintext' }}" id="codigo">{{ conteudo }}</code></pre>
+    </div>
+  </div>
+
+  <script>
+    // Syntax highlight
+    document.addEventListener("DOMContentLoaded", () => {
+      hljs.highlightElement(document.getElementById("codigo"));
+    });
+
+    // Atalho: R para atualizar a página (recarregar o arquivo)
+    document.addEventListener("keydown", e => {
+      if (e.key === "r" && !e.ctrlKey && !e.metaKey) {
+        location.reload();
+      }
+    });
+  </script>
+
+  <p class="muted" style="margin-top:12px;font-size:12px">
+    Pressione <kbd style="background:#f3f4f6;border:1px solid #d1d5db;
+    border-radius:3px;padding:1px 5px">R</kbd> para recarregar o arquivo.
+  </p>
+
+{% endif %}
+
+{% endblock %}

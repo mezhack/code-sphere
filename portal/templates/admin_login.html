@@ -1,0 +1,11 @@
+{% extends "base.html" %}
+{% block titulo %}Admin{% endblock %}
+{% block conteudo %}
+  <h1>Área do Professor</h1>
+
+  <form method="post" action="{{ url_for('admin_login') }}" autocomplete="off">
+    <label for="senha">Senha de administrador</label>
+    <input type="password" id="senha" name="senha" required autofocus>
+    <button type="submit">Entrar</button>
+  </form>
+{% endblock %}

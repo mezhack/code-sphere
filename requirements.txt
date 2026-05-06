@@ -1,0 +1,7 @@
+# Pacotes Python instalados em todos os ambientes dos alunos.
+# Rode ./instalar_pacotes.sh após adicionar linhas aqui.
+
+requests
+
+# Quando for usar jogos, descomente:
+# pygame

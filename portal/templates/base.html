@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>{% block titulo %}Sala de Aula{% endblock %}</title>
+  <style>
+    *{box-sizing:border-box}
+    body{font-family:system-ui,-apple-system,sans-serif;background:#eef2f7;color:#222;margin:0;min-height:100vh;display:flex;align-items:center;justify-content:center;padding:20px}
+    .card{background:#fff;border-radius:12px;padding:36px;box-shadow:0 4px 24px rgba(0,0,0,.08);width:100%;max-width:420px}
+    .card.wide{max-width:960px}
+    h1{color:#1f4e79;margin:0 0 24px;font-size:26px}
+    h2{color:#1f4e79;margin:30px 0 12px;font-size:18px;border-bottom:1px solid #eee;padding-bottom:6px}
+    label{display:block;margin:14px 0 6px;font-weight:600;font-size:14px;color:#555}
+    input[type=text],input[type=password]{width:100%;padding:10px 12px;border:1px solid #d1d5db;border-radius:6px;font-size:15px;font-family:inherit}
+    input:focus{outline:none;border-color:#1f4e79;box-shadow:0 0 0 3px rgba(31,78,121,.1)}
+    button,.btn{background:#1f4e79;color:#fff;border:none;padding:11px 20px;border-radius:6px;font-size:15px;font-weight:600;cursor:pointer;font-family:inherit;text-decoration:none;display:inline-block;margin-top:18px}
+    button:hover,.btn:hover{background:#16395a}
+    .btn-danger{background:#c0392b}
+    .btn-danger:hover{background:#922b1f}
+    .btn-sm{padding:5px 10px;font-size:13px;margin:0}
+    .flash{padding:10px 14px;border-radius:6px;margin:15px 0;font-size:14px}
+    .flash.erro{background:#fde8e8;color:#9b1c1c;border-left:4px solid #c0392b}
+    .flash.sucesso{background:#e1f7ea;color:#0a5c2f;border-left:4px solid #28a745}
+    .info{background:#e7f0f9;color:#1f4e79;padding:12px 16px;border-radius:6px;font-size:14px;margin-bottom:18px;border-left:4px solid #1f4e79}
+    .aviso{background:#fff7e6;color:#8a5a00;padding:12px 16px;border-radius:6px;font-size:14px;margin-bottom:18px;border-left:4px solid #f5a623}
+    table{width:100%;border-collapse:collapse;margin-top:12px}
+    th,td{padding:10px 8px;text-align:left;border-bottom:1px solid #eee;font-size:14px}
+    th{background:#f5f7fa;color:#555;font-weight:600;font-size:13px;text-transform:uppercase;letter-spacing:.5px}
+    tr:hover{background:#fafbfc}
+    .tag{display:inline-block;padding:2px 8px;border-radius:10px;font-size:12px;font-weight:600}
+    .tag-on{background:#d1fae5;color:#065f46}
+    .tag-off{background:#e5e7eb;color:#4b5563}
+    .tag-warn{background:#fef3c7;color:#92400e}
+    .muted{color:#6b7280;font-size:13px}
+    .topbar{display:flex;justify-content:space-between;align-items:center;margin-bottom:20px}
+    .topbar h1{margin:0}
+    form.inline{display:inline}
+    .stat{display:inline-block;background:#f5f7fa;padding:10px 18px;border-radius:8px;margin-right:10px;font-size:14px}
+    .stat strong{color:#1f4e79;font-size:20px;display:block}
+  </style>
+</head>
+<body>
+  <div class="card {% block classe_extra %}{% endblock %}">
+    {% with mensagens = get_flashed_messages(with_categories=true) %}
+      {% for categoria, msg in mensagens %}
+        <div class="flash {{ categoria }}">{{ msg }}</div>
+      {% endfor %}
+    {% endwith %}
+    {% block conteudo %}{% endblock %}
+  </div>
+</body>
+</html>

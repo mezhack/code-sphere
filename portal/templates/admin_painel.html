@@ -1,0 +1,166 @@
+{% extends "base.html" %}
+{% block titulo %}Painel do Professor{% endblock %}
+{% block classe_extra %}wide{% endblock %}
+{% block conteudo %}
+  <div class="topbar">
+    <h1>Painel do Professor</h1>
+    <div>
+      <a href="{{ url_for('admin_changelog') }}" class="btn btn-sm" style="background:#0d9488">📋 v<span id="versao-local">...</span></a>
+      <a href="{{ url_for('index') }}" class="btn btn-sm" style="background:#6b7280">Portal alunos</a>
+      <a href="{{ url_for('admin_logout') }}" class="btn btn-sm" style="background:#6b7280">Sair</a>
+    </div>
+  </div>
+
+  <!-- Versão e atualização -->
+  <div id="versao-banner" style="display:none;margin-bottom:16px"></div>
+
+  <!-- Stats gerais -->
+  <div style="display:flex;flex-wrap:wrap;gap:10px;margin-bottom:24px">
+    <div class="stat"><strong>{{ alunos|length }}</strong>Total de alunos</div>
+    <div class="stat"><strong id="stat-ativos">{{ ativos }}</strong>Ativos agora</div>
+    <div class="stat"><strong>{{ alunos|selectattr('precisa_trocar')|list|length }}</strong>Pendente trocar senha</div>
+    {% if ram_total %}
+    <div class="stat"><strong>{{ ram_livre }} / {{ ram_total }} GB</strong>RAM livre no servidor</div>
+    {% endif %}
+    <div class="stat"><strong>{{ timeout_min }} min</strong>Timeout inatividade</div>
+  </div>
+
+  <!-- Ações em lote -->
+  <h2>Ações em lote</h2>
+  <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:24px">
+    <form method="post" action="{{ url_for('admin_parar_todos') }}"
+          onsubmit="return confirm('Parar TODOS os containers agora?')">
+      <button type="submit" class="btn btn-danger btn-sm">⏹ Parar todos</button>
+    </form>
+
+    <form method="post" action="{{ url_for('admin_resetar_todas') }}"
+          id="form-reset-todas" style="display:flex;gap:6px;align-items:center">
+      <input type="text" name="confirmacao" placeholder='Digite "RESETAR TODAS"'
+             style="padding:5px 10px;font-size:13px;border:1px solid #d1d5db;border-radius:6px">
+      <button type="submit" class="btn btn-danger btn-sm"
+              onclick="return confirm('Resetar TODAS as senhas? Todos serão obrigados a trocar no próximo login.')">
+        🔑 Resetar todas senhas
+      </button>
+    </form>
+
+    <button onclick="atualizarStats()" class="btn btn-sm" style="background:#6b7280">
+      🔄 Atualizar stats
+    </button>
+  </div>
+
+  <!-- Tabela de alunos -->
+  <h2>Alunos</h2>
+  <table id="tabela-alunos">
+    <thead>
+      <tr>
+        <th>Aluno</th>
+        <th>Status</th>
+        <th>CPU</th>
+        <th>RAM (MB)</th>
+        <th>Inatividade</th>
+        <th>Último login</th>
+        <th>Ações</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for a in alunos %}
+      <tr id="row-{{ a.nome }}">
+        <td><strong>{{ a.nome }}</strong></td>
+        <td>
+          <span class="tag {% if a.ativo_agora %}tag-on{% else %}tag-off{% endif %}"
+                id="status-{{ a.nome }}">
+            {% if a.ativo_agora %}Online{% else %}Offline{% endif %}
+          </span>
+          {% if a.precisa_trocar %}
+            <span class="tag tag-warn">Troca pendente</span>
+          {% endif %}
+        </td>
+        <td class="muted" id="cpu-{{ a.nome }}">
+          {% if a.cpu is not none %}{{ a.cpu }}%{% else %}—{% endif %}
+        </td>
+        <td class="muted" id="ram-{{ a.nome }}">
+          {% if a.ram is not none %}{{ a.ram }}{% else %}—{% endif %}
+        </td>
+        <td class="muted" id="inat-{{ a.nome }}">
+          {% if a.minutos_inatividade is not none %}{{ a.minutos_inatividade }} min{% else %}—{% endif %}
+        </td>
+        <td class="muted">
+          {% if a.ultimo_login %}{{ a.ultimo_login[:16]|replace('T',' ') }}{% else %}nunca{% endif %}
+        </td>
+        <td style="white-space:nowrap">
+          <a href="{{ url_for('admin_arquivos', aluno=a.nome) }}"
+             class="btn btn-sm" style="background:#0d9488">📁 Arquivos</a>
+          <form class="inline" method="post"
+                action="{{ url_for('admin_resetar_senha', aluno=a.nome) }}"
+                onsubmit="return confirm('Resetar senha de {{ a.nome }}?')">
+            <button class="btn btn-sm">🔑 Senha</button>
+          </form>
+          {% if a.ativo_agora %}
+          <form class="inline" method="post"
+                action="{{ url_for('admin_reiniciar_container', aluno=a.nome) }}"
+                onsubmit="return confirm('Reiniciar container de {{ a.nome }}?')">
+            <button class="btn btn-sm" style="background:#f5a623">↺ Reiniciar</button>
+          </form>
+          <form class="inline" method="post"
+                action="{{ url_for('admin_parar_container', aluno=a.nome) }}"
+                onsubmit="return confirm('Parar container de {{ a.nome }}?')">
+            <button class="btn btn-sm btn-danger">⏹ Parar</button>
+          </form>
+          {% endif %}
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+
+  <script>
+    // Atualiza stats sem reload de página
+    async function atualizarStats() {
+      try {
+        const r = await fetch("/admin/api/stats");
+        const d = await r.json();
+        let ativos = 0;
+        for (const [nome, s] of Object.entries(d)) {
+          const statusEl = document.getElementById(`status-${nome}`);
+          if (statusEl) {
+            statusEl.textContent = s.ativo ? "Online" : "Offline";
+            statusEl.className = `tag ${s.ativo ? "tag-on" : "tag-off"}`;
+          }
+          const cpuEl = document.getElementById(`cpu-${nome}`);
+          if (cpuEl) cpuEl.textContent = s.cpu != null ? s.cpu + "%" : "—";
+          const ramEl = document.getElementById(`ram-${nome}`);
+          if (ramEl) ramEl.textContent = s.ram != null ? s.ram : "—";
+          const iEl = document.getElementById(`inat-${nome}`);
+          if (iEl) iEl.textContent = s.inatividade != null ? s.inatividade + " min" : "—";
+          if (s.ativo) ativos++;
+        }
+        const el = document.getElementById("stat-ativos");
+        if (el) el.textContent = ativos;
+      } catch(e) { console.error("Erro ao buscar stats:", e); }
+    }
+
+    // Auto-atualiza a cada 30s
+    setInterval(atualizarStats, 30000);
+
+    // Verifica versão ao carregar
+    async function verificarVersao() {
+      try {
+        const r = await fetch("/admin/api/versao");
+        const d = await r.json();
+        const elV = document.getElementById("versao-local");
+        if (elV) elV.textContent = d.versao_local;
+        const banner = document.getElementById("versao-banner");
+        if (!banner) return;
+        if (d.tem_atualizacao) {
+          banner.style.display = "block";
+          banner.innerHTML = '<div style="background:#fef3c7;border-left:4px solid #f5a623;padding:12px 16px;border-radius:6px;display:flex;justify-content:space-between;align-items:center"><span>🆕 <strong>Nova versão: v' + d.versao_remota + '</strong> — você usa v' + d.versao_local + '</span><a href="' + d.url_release + '" target="_blank" class="btn btn-sm" style="background:#f5a623;margin-top:0">Ver novidades</a></div>';
+        } else if (d.versao_remota) {
+          banner.style.display = "block";
+          banner.innerHTML = '<div style="background:#d1fae5;border-left:4px solid #28a745;padding:10px 16px;border-radius:6px;font-size:13px;color:#065f46">✔ Sistema atualizado (v' + d.versao_local + ')</div>';
+          setTimeout(function(){ banner.style.display="none"; }, 5000);
+        }
+      } catch(e) {}
+    }
+    verificarVersao();
+  </script>
+{% endblock %}

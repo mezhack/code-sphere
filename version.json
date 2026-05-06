@@ -1,0 +1,20 @@
+{
+  "version": "1.0.0",
+  "release_date": "2026-04-29",
+  "changelog": {
+    "1.0.0": {
+      "date": "2026-04-29",
+      "changes": [
+        "Lançamento inicial",
+        "Portal de autenticação com troca obrigatória de senha no primeiro login",
+        "VS Code Web isolado por aluno com Python 3, Pygame e PostgreSQL",
+        "Auto-start de containers sob demanda ao fazer login",
+        "Desligamento automático por inatividade com reconexão automática no navegador",
+        "Painel administrativo com visualização de arquivos dos alunos",
+        "HTTPS via Cloudflare Tunnel sem necessidade de roteador ou domínio",
+        "Setup interativo com detecção automática de hardware",
+        "Suporte a duas turmas com pré-aquecimento seletivo"
+      ]
+    }
+  }
+}

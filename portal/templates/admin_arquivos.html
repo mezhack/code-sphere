@@ -1,0 +1,85 @@
+{% extends "base.html" %}
+{% block titulo %}Arquivos de {{ aluno }}{% endblock %}
+{% block classe_extra %}wide{% endblock %}
+{% block conteudo %}
+
+<div class="topbar">
+  <div>
+    <a href="{{ url_for('admin_painel') }}" style="color:#1f4e79;text-decoration:none;font-size:14px">
+      ← Painel
+    </a>
+    <h1 style="display:inline;margin-left:12px">📁 {{ aluno }}</h1>
+  </div>
+  <a href="{{ url_for('admin_painel') }}" class="btn btn-sm" style="background:#6b7280">Voltar</a>
+</div>
+
+<p class="muted">
+  Workspace do aluno. Clique em um arquivo <code>.py</code> para ver o código.
+</p>
+
+{% if not arvore %}
+  <div class="aviso">Nenhum arquivo encontrado no workspace deste aluno.</div>
+{% else %}
+  <div class="arvore">
+    {{ arvore_html(arvore, aluno) }}
+  </div>
+{% endif %}
+
+<style>
+  .arvore { font-family: monospace; font-size: 14px; line-height: 1.8; }
+  .dir-nome { font-weight: 600; color: #1f4e79; cursor: pointer; user-select: none; }
+  .dir-nome::before { content: "📂 "; }
+  .dir-conteudo { margin-left: 20px; border-left: 2px solid #e5e7eb; padding-left: 12px; }
+  .dir-conteudo.fechado { display: none; }
+  .arquivo-link { text-decoration: none; color: #374151; display: inline-block; }
+  .arquivo-link:hover { color: #1f4e79; text-decoration: underline; }
+  .ext-py::before  { content: "🐍 "; }
+  .ext-txt::before { content: "📄 "; }
+  .ext-md::before  { content: "📝 "; }
+  .ext-json::before{ content: "🔧 "; }
+  .ext-outro::before{ content: "📄 "; }
+  .tamanho { color: #9ca3af; font-size: 12px; margin-left: 6px; }
+</style>
+
+<script>
+  // Toggle de pastas
+  document.querySelectorAll(".dir-nome").forEach(el => {
+    el.addEventListener("click", () => {
+      const conteudo = el.nextElementSibling;
+      conteudo.classList.toggle("fechado");
+      el.style.opacity = conteudo.classList.contains("fechado") ? "0.6" : "1";
+    });
+  });
+</script>
+
+{% endblock %}
+
+{# Macro recursiva para renderizar a árvore #}
+{% macro arvore_html(nos, aluno) %}
+  {% for no in nos %}
+    {% if no.tipo == "dir" %}
+      <div>
+        <span class="dir-nome">{{ no.nome }}/</span>
+        <div class="dir-conteudo">
+          {{ arvore_html(no.filhos, aluno) }}
+        </div>
+      </div>
+    {% else %}
+      <div>
+        <a class="arquivo-link ext-{{ no.ext[1:] if no.ext else 'outro' }}"
+           href="{{ url_for('admin_ver_arquivo', aluno=aluno, caminho=no.caminho) }}">
+          {{ no.nome }}
+        </a>
+        <span class="tamanho">
+          {% if no.tamanho < 1024 %}
+            {{ no.tamanho }} B
+          {% elif no.tamanho < 1048576 %}
+            {{ (no.tamanho / 1024)|round(1) }} KB
+          {% else %}
+            {{ (no.tamanho / 1048576)|round(1) }} MB
+          {% endif %}
+        </span>
+      </div>
+    {% endif %}
+  {% endfor %}
+{% endmacro %}

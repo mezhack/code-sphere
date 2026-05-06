@@ -1,0 +1,22 @@
+{% extends "base.html" %}
+{% block titulo %}Entrar - Sala de Aula{% endblock %}
+{% block conteudo %}
+  <h1>Programação de Jogos Digitais</h1>
+  <p class="muted" style="margin-top:-18px;margin-bottom:22px">Entre com seu usuário e senha.</p>
+
+  <form method="post" action="{{ url_for('login') }}" autocomplete="off">
+    <label for="usuario">Usuário</label>
+    <input type="text" id="usuario" name="usuario" required autofocus
+           placeholder="ex: aluno01" pattern="aluno[0-9]{2}"
+           title="Use o formato alunoXX (ex: aluno01)">
+
+    <label for="senha">Senha</label>
+    <input type="password" id="senha" name="senha" required>
+
+    <button type="submit">Entrar</button>
+  </form>
+
+  <p class="muted" style="margin-top:28px;font-size:13px;text-align:center">
+    Esqueceu a senha? Fale com o professor.
+  </p>
+{% endblock %}

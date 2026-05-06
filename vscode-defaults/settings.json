@@ -1,0 +1,10 @@
+{
+  "files.autoSave": "afterDelay",
+  "files.autoSaveDelay": 1000,
+  "editor.fontSize": 14,
+  "editor.tabSize": 4,
+  "editor.insertSpaces": true,
+  "editor.formatOnSave": false,
+  "python.defaultInterpreterPath": "/usr/bin/python3",
+  "terminal.integrated.defaultProfile.linux": "bash"
+}

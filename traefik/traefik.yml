@@ -1,0 +1,24 @@
+# Traefik - configuração estática
+# Não precisa editar este arquivo — todas as rotas dos alunos
+# são geradas em traefik/dynamic/routes.yml pelo gerar.sh.
+
+api:
+  dashboard: true
+  insecure: true
+
+providers:
+  docker:
+    exposedByDefault: false
+    network: sala_net
+  file:
+    directory: /etc/traefik/dynamic
+    watch: true
+
+entryPoints:
+  web:
+    address: ":80"
+  traefik:
+    address: ":8080"
+
+log:
+  level: INFO

@@ -1,0 +1,83 @@
+{% extends "base.html" %}
+{% block titulo %}Conectando...{% endblock %}
+{% block conteudo %}
+  <h1>Bem-vindo(a), {{ aluno }}!</h1>
+
+  <div class="info" id="status">
+    ⏳ Iniciando seu ambiente... Aguarde.
+  </div>
+
+  <div style="margin:16px 0;background:#e5e7eb;border-radius:4px;height:6px;overflow:hidden">
+    <div id="barra" style="height:100%;background:#1f4e79;width:0%;transition:width 0.5s ease"></div>
+  </div>
+
+  <p class="muted" id="dica" style="display:none;font-size:13px">
+    Está demorando mais que o normal.
+    <a href="{{ url_destino }}">Clique aqui</a> para tentar acessar diretamente.
+  </p>
+
+  <hr style="margin:28px 0;border:none;border-top:1px solid #eee">
+  <p style="text-align:center">
+    <a href="{{ url_for('trocar_senha') }}" class="btn" style="background:#6b7280">Trocar senha</a>
+    <a href="{{ url_for('logout') }}" class="btn" style="background:#c0392b">Sair</a>
+  </p>
+
+  <!-- Form de autologin — submetido pelo JS quando o ambiente estiver pronto -->
+  <form id="autologin" method="post" action="{{ url_destino }}login" style="display:none">
+    <input type="hidden" name="password" value="{{ token }}">
+    <input type="hidden" name="base" value="{{ url_destino.rstrip('/') }}">
+  </form>
+
+  <script>
+    const STATUS_MSGS = [
+      "⏳ Iniciando seu ambiente...",
+      "🐍 Carregando Python e extensões...",
+      "📁 Preparando seu workspace...",
+      "🔌 Conectando ao VS Code...",
+      "✅ Quase lá..."
+    ];
+    let step = 0;
+    const statusEl = document.getElementById("status");
+    const barraEl  = document.getElementById("barra");
+    const dicaEl   = document.getElementById("dica");
+
+    // Animação de progresso enquanto aguarda
+    function avancarBarra() {
+      if (step < STATUS_MSGS.length) {
+        statusEl.textContent = STATUS_MSGS[step];
+        barraEl.style.width = ((step + 1) / STATUS_MSGS.length * 85) + "%";
+        step++;
+      }
+    }
+    avancarBarra();
+    const tick = setInterval(avancarBarra, 2500);
+
+    // Mostra dica manual após 20s
+    setTimeout(() => dicaEl.style.display = "block", 20000);
+
+    // O portal já aguardou o code-server estar pronto antes de renderizar esta página.
+    // Delay pequeno apenas para a animação completar antes do redirect.
+    setTimeout(() => {
+      clearInterval(tick);
+      statusEl.textContent = "✅ Ambiente pronto! Abrindo VS Code...";
+      barraEl.style.width = "100%";
+      setTimeout(() => document.getElementById("autologin").submit(), 800);
+    }, 1500);
+
+    // Heartbeat: mantém sessão viva
+    setInterval(() => {
+      fetch("{{ url_for('heartbeat') }}", { method: "POST" }).catch(() => {});
+    }, 60000);
+
+    // Ping: detecta se container caiu e reconecta
+    setInterval(async () => {
+      try {
+        const r = await fetch("/ping", { credentials: "same-origin" });
+        const d = await r.json();
+        if (!d.ok) {
+          window.location.href = d.login ? "/login" : (d.redirect || "/conectar");
+        }
+      } catch(e) {}
+    }, 30000);
+  </script>
+{% endblock %}
