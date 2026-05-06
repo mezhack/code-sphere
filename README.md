@@ -1,4 +1,4 @@
-# Sala de Aula Docker — Programação de Jogos Digitais
+# Code Sphere — IDE Online para programacao em rede local
 
 Ambiente multi-usuário que dá **VS Code Web** (code-server) para cada aluno,
 com **portal próprio de autenticação**, **troca de senha obrigatória no
