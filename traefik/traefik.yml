@@ -7,9 +7,6 @@ api:
   insecure: true
 
 providers:
-  docker:
-    exposedByDefault: false
-    network: sala_net
   file:
     directory: /etc/traefik/dynamic
     watch: true

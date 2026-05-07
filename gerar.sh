@@ -30,12 +30,18 @@ mkdir -p traefik/dynamic
 ROUTES="traefik/dynamic/routes.yml"
 
 cat > "$ROUTES" <<'HEADER'
-# Rotas Traefik para containers dos alunos — gerado por gerar.sh.
+# Rotas Traefik — gerado por gerar.sh.
 # As rotas precisam existir mesmo quando o container está parado, por isso
 # declaramos aqui em vez de usar labels Docker.
 
 http:
   services:
+
+    portal-svc:
+      loadBalancer:
+        servers:
+          - url: "http://sala_portal:5000"
+
 HEADER
 
 for i in $(seq 1 "$QUANTIDADE_ALUNOS"); do
@@ -68,6 +74,14 @@ done
 cat >> "$ROUTES" <<'R_HEADER'
 
   routers:
+
+    portal-router:
+      rule: "Path(`/`) || PathPrefix(`/login`) || PathPrefix(`/logout`) || PathPrefix(`/trocar-senha`) || PathPrefix(`/conectar`) || PathPrefix(`/heartbeat`) || PathPrefix(`/admin`) || PathPrefix(`/healthz`)"
+      entryPoints:
+        - web
+      priority: 50
+      service: portal-svc
+
 R_HEADER
 
 for i in $(seq 1 "$QUANTIDADE_ALUNOS"); do
@@ -106,7 +120,6 @@ services:
     volumes:
       - ./traefik/traefik.yml:/etc/traefik/traefik.yml:ro
       - ./traefik/dynamic:/etc/traefik/dynamic:ro
-      - /var/run/docker.sock:/var/run/docker.sock:ro
     restart: unless-stopped
     networks:
       - sala_net
@@ -133,13 +146,6 @@ services:
     restart: unless-stopped
     networks:
       - sala_net
-    labels:
-      - "traefik.enable=true"
-      # Portal na raiz e em /login, /trocar-senha, /conectar, /admin, /heartbeat, /logout
-      - "traefik.http.routers.portal.rule=Path(\`/\`) || PathPrefix(\`/login\`) || PathPrefix(\`/logout\`) || PathPrefix(\`/trocar-senha\`) || PathPrefix(\`/conectar\`) || PathPrefix(\`/heartbeat\`) || PathPrefix(\`/admin\`) || PathPrefix(\`/healthz\`)"
-      - "traefik.http.routers.portal.entrypoints=web"
-      - "traefik.http.routers.portal.priority=50"
-      - "traefik.http.services.portal.loadbalancer.server.port=5000"
 
 COMPOSE_HEAD
 
@@ -184,8 +190,8 @@ for i in $(seq 1 "$QUANTIDADE_ALUNOS"); do
     container_name: sala_${nome}
     hostname: sala_${nome}
     environment:
-      - PUID=1000
-      - PGID=1000
+      - PUID=911
+      - PGID=1001
       - TZ=${TIMEZONE}
       - PASSWORD=inicial_sera_substituida_ao_logar
       - DEFAULT_WORKSPACE=/config/workspace
@@ -258,8 +264,9 @@ WELCOME
 done
 
 # Permissões para code-server (roda como UID 1000 no container)
-# Sempre aplica sudo chown para garantir que o code-server consiga escrever
-sudo chown -R 1000:1000 alunos/ 2>/dev/null || true
+# Garante que o code-server (uid=911, gid=1001) consiga escrever nos workspaces.
+# Usa Docker para evitar dependência de sudo no host.
+docker run --rm -v "$(pwd)/alunos":/target alpine chown -R 911:1001 /target 2>/dev/null || true
 
 echo ""
 echo "============================================================"

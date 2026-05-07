@@ -97,8 +97,16 @@ def iniciar_container(aluno, token):
     except docker.errors.NotFound:
         app.logger.error(f"{cname} não existe"); return False
     if container.status == "running":
-        # Container já rodando — verifica se code-server responde
-        return aguardar_code_server(aluno, timeout=15)
+        env = container.attrs.get("Config", {}).get("Env") or []
+        senha_atual = next((e.split("=", 1)[1] for e in env if e.startswith("PASSWORD=")), None)
+        if senha_atual == token:
+            return aguardar_code_server(aluno, timeout=15)
+        # Senha do container não bate com o token — para para recriar com a senha correta
+        try: container.stop(timeout=10)
+        except Exception as e: app.logger.warning(f"Erro ao parar {cname}: {e}")
+        try: container = dc().containers.get(cname)
+        except docker.errors.NotFound:
+            app.logger.error(f"{cname} sumiu após parar"); return False
     try:
         attrs = container.attrs
         cfg = attrs["Config"]; hcfg = attrs["HostConfig"]
