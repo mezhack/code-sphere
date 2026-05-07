@@ -2,9 +2,9 @@
 set -euo pipefail
 cd "$(dirname "$0")"
 
-if [ ! -f docker-compose.yml ]; then
-    echo "ERRO: rode ./gerar.sh primeiro."
-    exit 1
+if [ ! -f docker-compose.yml ] || [ ! -f traefik/dynamic/routes.yml ]; then
+    echo "==> Arquivos gerados não encontrados — executando gerar.sh primeiro..."
+    bash "$(dirname "$0")/gerar.sh"
 fi
 
 if docker compose version >/dev/null 2>&1; then DC="docker compose"
