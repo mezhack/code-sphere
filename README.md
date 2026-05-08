@@ -90,7 +90,7 @@ Teste: `docker ps` (precisa listar sem erro).
 
 ## Primeira execução
 
-### 1. Edite `config.env`
+### 1. Execute 'setup.sh'
 
 **Obrigatório:** troque `SENHA_ADMIN` para algo que só você saiba.
 
@@ -113,6 +113,7 @@ TIMEZONE=America/Sao_Paulo
 
 Isso cria `docker-compose.yml`, `traefik/dynamic/routes.yml`, e as pastas
 `alunos/alunoNN/` (60 ao total).
+Se executou 'setup.sh', não é necessário esse passo.
 
 ### 3. Suba a sala
 
