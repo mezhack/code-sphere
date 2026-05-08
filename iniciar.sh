@@ -28,7 +28,9 @@ docker build -f aluno.Dockerfile -t sala-aluno:latest .
 echo "==> Subindo infraestrutura..."
 SERVICOS="traefik portal"
 [ "${CLOUDFLARE_TUNNEL:-false}" = "true" ] && SERVICOS="$SERVICOS cloudflared"
-$DC up -d $SERVICOS
+# --force-recreate garante que o Traefik sempre leia o routes.yml atual.
+# Necessário porque no WSL2 o inotify não detecta arquivos criados após o container subir.
+$DC up -d --force-recreate $SERVICOS
 
 sleep 4
 $DC ps
