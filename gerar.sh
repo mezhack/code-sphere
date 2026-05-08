@@ -76,7 +76,7 @@ cat >> "$ROUTES" <<'R_HEADER'
   routers:
 
     portal-router:
-      rule: "Path(`/`) || PathPrefix(`/login`) || PathPrefix(`/logout`) || PathPrefix(`/trocar-senha`) || PathPrefix(`/conectar`) || PathPrefix(`/heartbeat`) || PathPrefix(`/admin`) || PathPrefix(`/healthz`)"
+      rule: "Path(`/`) || PathPrefix(`/login`) || PathPrefix(`/logout`) || PathPrefix(`/trocar-senha`) || PathPrefix(`/conectar`) || PathPrefix(`/aguardar`) || PathPrefix(`/ping`) || PathPrefix(`/heartbeat`) || PathPrefix(`/admin`) || PathPrefix(`/healthz`)"
       entryPoints:
         - web
       priority: 50
@@ -141,7 +141,7 @@ services:
       - ALUNOS_DIR=/alunos
     volumes:
       - ./portal-data:/data
-      - ./alunos:/alunos:ro
+      - ./alunos:/alunos
       - /var/run/docker.sock:/var/run/docker.sock
     restart: unless-stopped
     networks:

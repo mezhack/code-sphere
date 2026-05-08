@@ -17,6 +17,7 @@ SENHA_INICIAL       = os.environ.get("SENHA_INICIAL", "trocar123")
 SENHA_ADMIN         = os.environ.get("SENHA_ADMIN", "admin")
 INATIVIDADE_MINUTOS = int(os.environ.get("INATIVIDADE_MINUTOS", "60"))
 FLASK_SECRET        = os.environ.get("FLASK_SECRET") or secrets.token_hex(32)
+ALUNOS_DIR          = Path(os.environ.get("ALUNOS_DIR", "/alunos"))
 
 app = Flask(__name__)
 app.secret_key = FLASK_SECRET
@@ -91,22 +92,45 @@ def aguardar_code_server(aluno: str, timeout: int = 30) -> bool:
     return False
 
 
+def _apagar_config_yaml(aluno: str):
+    p = ALUNOS_DIR / aluno / ".config" / "code-server" / "config.yaml"
+    try:
+        p.unlink(missing_ok=True)
+    except Exception as e:
+        app.logger.warning(f"Não foi possível remover config.yaml de {aluno}: {e}")
+
+def _senha_config_yaml(aluno: str) -> str | None:
+    """Lê a senha salva no config.yaml do aluno. Retorna None se não existir."""
+    p = ALUNOS_DIR / aluno / ".config" / "code-server" / "config.yaml"
+    try:
+        for line in p.read_text().splitlines():
+            if line.startswith("password:"):
+                return line.split(":", 1)[1].strip()
+    except Exception:
+        pass
+    return None
+
 def iniciar_container(aluno, token):
     cname = f"sala_{aluno}"
     try: container = dc().containers.get(cname)
     except docker.errors.NotFound:
         app.logger.error(f"{cname} não existe"); return False
     if container.status == "running":
-        env = container.attrs.get("Config", {}).get("Env") or []
-        senha_atual = next((e.split("=", 1)[1] for e in env if e.startswith("PASSWORD=")), None)
-        if senha_atual == token:
+        # code-server usa config.yaml se existir — comparar contra ele, não o env do Docker
+        senha_efetiva = _senha_config_yaml(aluno)
+        if senha_efetiva is None:
+            # sem config.yaml: code-server usa o env PASSWORD; comparar contra ele
+            env = container.attrs.get("Config", {}).get("Env") or []
+            senha_efetiva = next((e.split("=", 1)[1] for e in env if e.startswith("PASSWORD=")), None)
+        if senha_efetiva == token:
             return aguardar_code_server(aluno, timeout=15)
-        # Senha do container não bate com o token — para para recriar com a senha correta
+        # Senha efetiva não bate com o token — para para recriar
         try: container.stop(timeout=10)
         except Exception as e: app.logger.warning(f"Erro ao parar {cname}: {e}")
         try: container = dc().containers.get(cname)
         except docker.errors.NotFound:
             app.logger.error(f"{cname} sumiu após parar"); return False
+    _apagar_config_yaml(aluno)
     try:
         attrs = container.attrs
         cfg = attrs["Config"]; hcfg = attrs["HostConfig"]
@@ -243,15 +267,34 @@ def conectar():
     sessoes = carregar_sessoes()
     if container_rodando(aluno) and aluno in sessoes:
         token = sessoes[aluno]["token"]
-    else:
-        token = gerar_token()
-        if not iniciar_container(aluno, token):
-            flash("Erro ao iniciar seu ambiente. Avise o professor.", "erro")
-            return redirect(url_for("login"))
+        sessoes[aluno]["ultimo_acesso"] = time.time()
+        salvar_sessoes(sessoes)
+        return render_template("conectar.html", aluno=aluno, url_destino=f"/code/{aluno}/",
+                               token=token, aguardando=False)
+    # Container não está rodando — gera token, salva sessão e inicia em background
+    token = gerar_token()
     sessoes[aluno] = {"token": token, "ultimo_acesso": time.time(),
-                      "iniciado_em": sessoes.get(aluno, {}).get("iniciado_em", time.time())}
+                      "iniciado_em": time.time()}
     salvar_sessoes(sessoes)
-    return render_template("conectar.html", aluno=aluno, url_destino=f"/code/{aluno}/", token=token)
+    def _iniciar_bg():
+        if not iniciar_container(aluno, token):
+            app.logger.error(f"Falha ao iniciar container de {aluno} em background")
+    threading.Thread(target=_iniciar_bg, daemon=True).start()
+    return render_template("conectar.html", aluno=aluno, url_destino=f"/code/{aluno}/",
+                           token=token, aguardando=True)
+
+@app.route("/aguardar")
+def aguardar_env():
+    if "aluno" not in session: return jsonify({"ok": False, "redirect": "/login"})
+    aluno = session["aluno"]
+    try:
+        req = urllib.request.Request(f"http://sala_{aluno}:8443/")
+        with urllib.request.urlopen(req, timeout=2) as resp:
+            if resp.status in (200, 302):
+                return jsonify({"ok": True})
+    except Exception:
+        pass
+    return jsonify({"ok": False})
 
 @app.route("/heartbeat", methods=["POST"])
 def heartbeat():
@@ -386,8 +429,6 @@ if __name__ == "__main__":
 # ---------------------------------------------------------------------------
 import mimetypes
 
-# Diretório base dos workspaces — montado no container via volume
-ALUNOS_DIR = Path(os.environ.get("ALUNOS_DIR", "/alunos"))
 
 # Extensões que o visualizador abre como texto
 TEXTO_EXTS = {

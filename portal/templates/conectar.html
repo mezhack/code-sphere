@@ -16,6 +16,11 @@
     <a href="{{ url_destino }}">Clique aqui</a> para tentar acessar diretamente.
   </p>
 
+  <p id="erro" style="display:none;color:#c0392b;font-size:13px">
+    Não foi possível iniciar seu ambiente. Avise o professor ou
+    <a href="/conectar">tente novamente</a>.
+  </p>
+
   <hr style="margin:28px 0;border:none;border-top:1px solid #eee">
   <p style="text-align:center">
     <a href="{{ url_for('trocar_senha') }}" class="btn" style="background:#6b7280">Trocar senha</a>
@@ -40,8 +45,8 @@
     const statusEl = document.getElementById("status");
     const barraEl  = document.getElementById("barra");
     const dicaEl   = document.getElementById("dica");
+    const erroEl   = document.getElementById("erro");
 
-    // Animação de progresso enquanto aguarda
     function avancarBarra() {
       if (step < STATUS_MSGS.length) {
         statusEl.textContent = STATUS_MSGS[step];
@@ -52,17 +57,39 @@
     avancarBarra();
     const tick = setInterval(avancarBarra, 2500);
 
-    // Mostra dica manual após 20s
-    setTimeout(() => dicaEl.style.display = "block", 20000);
-
-    // O portal já aguardou o code-server estar pronto antes de renderizar esta página.
-    // Delay pequeno apenas para a animação completar antes do redirect.
-    setTimeout(() => {
+    function abrirVSCode() {
       clearInterval(tick);
       statusEl.textContent = "✅ Ambiente pronto! Abrindo VS Code...";
       barraEl.style.width = "100%";
       setTimeout(() => document.getElementById("autologin").submit(), 800);
-    }, 1500);
+    }
+
+    {% if aguardando %}
+    // Container sendo iniciado em background — aguardar via polling
+    let tentativas = 0;
+    const MAX_TENTATIVAS = 45; // 45 × 2s = 90 segundos
+    setTimeout(() => dicaEl.style.display = "block", 20000);
+    const poll = setInterval(async () => {
+      tentativas++;
+      if (tentativas >= MAX_TENTATIVAS) {
+        clearInterval(poll);
+        clearInterval(tick);
+        dicaEl.style.display = "none";
+        erroEl.style.display = "block";
+        statusEl.textContent = "❌ Falha ao iniciar ambiente.";
+        return;
+      }
+      try {
+        const r = await fetch("/aguardar", { credentials: "same-origin" });
+        const d = await r.json();
+        if (d.ok) { clearInterval(poll); abrirVSCode(); }
+        else if (d.redirect) { window.location.href = d.redirect; }
+      } catch(e) {}
+    }, 2000);
+    {% else %}
+    // Servidor confirmou que o ambiente já está pronto
+    setTimeout(abrirVSCode, 1500);
+    {% endif %}
 
     // Heartbeat: mantém sessão viva
     setInterval(() => {
