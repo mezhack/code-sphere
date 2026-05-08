@@ -4,24 +4,57 @@ This guide covers known issues and their solutions, organized by symptom.
 
 ## Symptom: 404 Not Found at Admin or Portal
 
-**Likely cause:** Traefik can't see the portal. Either the portal isn't running, or Traefik's routing rules are stale.
+**Likely cause:** Traefik is running but hasn't loaded its routes. Check both containers and whether `routes.yml` is visible inside the Traefik container.
 
 ```bash
 # Check both are running
 docker ps | grep -E 'sala_traefik|sala_portal'
 
-# Check Traefik logs for errors
-docker logs sala_traefik --tail 30
+# Check what routes Traefik has loaded (should show 60+ entries)
+curl -s http://127.0.0.1:8090/api/http/routers | python3 -c \
+  "import json,sys; r=json.load(sys.stdin); print(len(r), 'rotas')"
+
+# Check that routes.yml is visible inside the container
+docker exec sala_traefik ls /etc/traefik/dynamic/
 ```
 
-If Traefik logs show `client version 1.24 is too old`, the Traefik image is too old for your Docker engine. Fix:
+### routes.yml appears empty inside the container (WSL2)
+
+On WSL2, Docker sometimes sees a bind-mounted directory as empty even though the file exists on the host. Verify:
 
 ```bash
-sed -i 's/image: traefik:v3\.[0-9]*/image: traefik:v3.6/' docker-compose.yml
+# Host has the file:
+ls traefik/dynamic/routes.yml
+
+# But container doesn't:
+docker exec sala_traefik ls /etc/traefik/dynamic/
+```
+
+Fix: ensure `gerar.sh` and `docker-compose.yml` mount the **file**, not the directory:
+
+```yaml
+volumes:
+  - ./traefik/dynamic/routes.yml:/etc/traefik/dynamic/routes.yml:ro  # correct
+# NOT:
+#  - ./traefik/dynamic:/etc/traefik/dynamic:ro                        # unreliable on WSL2
+```
+
+Then recreate Traefik:
+
+```bash
 docker compose up -d --force-recreate traefik
 ```
 
-If the portal isn't running:
+### routes.yml doesn't exist
+
+If you cloned fresh and haven't run `./iniciar.sh` yet, the file hasn't been generated:
+
+```bash
+./gerar.sh        # generates routes.yml and docker-compose.yml
+./iniciar.sh      # builds images and starts everything
+```
+
+### Portal isn't running
 
 ```bash
 docker compose up -d --force-recreate portal
@@ -76,25 +109,25 @@ done
 
 ## Symptom: Student Sees "Welcome to code-server" Password Prompt
 
-**Likely cause:** the portal redirected to the student's container before the auto-login form could submit, OR the container has a stale password from a previous session.
+**Likely cause:** a stale `config.yaml` in the student's volume has a password that doesn't match the token the portal generated.
 
-This is the bug that the health-check feature was added to prevent. If it still happens:
+The `linuxserver/code-server` image creates `config.yaml` only on first run and ignores `PASSWORD` env var on subsequent starts. If the container was recreated with a new token but the old `config.yaml` wasn't deleted, code-server rejects the portal's autologin.
+
+The portal automatically deletes `config.yaml` before recreating a container. If the prompt still appears:
+
+1. Tell the student to log out and log back in via the portal URL (not via `/code/...` directly).
+2. If it persists, from the admin panel click "Reiniciar" for that student's container.
+
+If multiple students see this simultaneously, delete the stale configs and recreate:
 
 ```bash
-docker restart sala_alunoXX
-```
+# Delete all stale config.yaml files
+find ./alunos -name config.yaml -path '*code-server*' -delete
 
-Tell the student to close the tab and log in again from the portal URL (not directly via the `/code/...` URL).
-
-If multiple students see this, the most likely cause is containers created with stale tokens. Recreate them:
-
-```bash
+# Recreate all student containers (data in workspace/ is preserved)
 ./parar.sh
 for i in $(seq 1 60); do
   docker rm -f "sala_$(printf 'aluno%02d' $i)" 2>/dev/null || true
-done
-sudo chown -R 911:1001 ~/sala-de-aula/alunos/
-for i in $(seq 1 60); do
   docker compose create "$(printf 'aluno%02d' $i)" 2>/dev/null
 done
 ./iniciar.sh
@@ -210,10 +243,10 @@ echo "=== In session? ===" && grep -c "$ALUNO" ~/sala-de-aula/portal-data/sessoe
 If something is deeply broken and you're starting class in 5 minutes:
 
 ```bash
-cd ~/sala-de-aula
+cd ~/code-sphere    # ou o nome da pasta do projeto
 ./parar.sh
 docker ps -a --format '{{.Names}}' | grep '^sala_' | xargs -r docker rm -f
-sudo chown -R 911:1001 ./alunos/
+docker run --rm -v "$(pwd)/alunos":/target alpine chown -R 911:1001 /target
 ./iniciar.sh
 ```
 

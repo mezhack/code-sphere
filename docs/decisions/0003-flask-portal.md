@@ -12,7 +12,7 @@ The portal needs to be modifiable by a teacher with basic Python knowledge. It a
 
 ## Decision
 
-Use **Flask** as the web framework with **Gunicorn** as the WSGI server. The entire portal lives in one Python file (`portal/app.py`, ~400 lines) plus a folder of Jinja templates.
+Use **Flask** as the web framework with **Gunicorn** as the WSGI server. The entire portal lives in one Python file (`portal/app.py`, ~600 lines) plus a folder of Jinja templates.
 
 Single Gunicorn worker with 4 threads. No worker pool, no async runtime, no background job queue beyond a single garbage-collector thread.
 
@@ -58,7 +58,7 @@ Rejected because: introduces a second language to the codebase (alongside the sh
 
 ### New problems introduced
 
-- A single worker means a slow Docker API call can briefly block other requests. Mitigated by short timeouts (e.g., the 3-second timeout on `stats_container`).
+- A single worker means a slow Docker API call can briefly block other requests. The container spawn path mitigates this by running `iniciar_container` in a background thread and returning the loading page immediately, so one student's slow container start does not delay other requests.
 - Thread-shared state requires careful locking. The persistence functions use a `threading.Lock` for atomic file writes.
 
 ## References

@@ -59,7 +59,7 @@ Rejected because: complicates the model and isn't needed. There's exactly one ho
 
 ### New problems introduced
 
-- **Setup must run chown.** The `setup.sh` and `gerar.sh` scripts both contain `sudo chown -R 911:1001 ./alunos/`. If a teacher creates new student directories outside these scripts, they must remember to chown.
+- **Setup must run chown.** The `gerar.sh` script performs the chown via a temporary Alpine container (`docker run --rm -v "$(pwd)/alunos":/target alpine chown -R 911:1001 /target`) to avoid requiring `sudo` on the host. If a teacher creates new student directories outside these scripts, they must run the same chown or use `sudo chown -R 911:1001 ./alunos/`.
 
 - **Backups preserve UID 911 ownership.** When restoring a backup on a new machine, the chown might need to be re-applied if Docker assigns different IDs.
 

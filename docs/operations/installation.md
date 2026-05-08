@@ -112,7 +112,7 @@ sala-de-aula-docker/
 └── vscode-defaults/        ← default VS Code settings injected into student containers
 ```
 
-The contents of `alunos/` and `portal-data/` should be backed up regularly. They are not in `.gitignore` for backup convenience but should not be committed to a public repo.
+The contents of `alunos/` and `portal-data/` should be backed up regularly. Both are in `.gitignore` (student data must never be committed). Use `./backup.sh` to create a tarball, or copy the directories manually.
 
 ## Troubleshooting
 
