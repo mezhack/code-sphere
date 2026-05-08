@@ -119,7 +119,7 @@ services:
       - "127.0.0.1:8090:8080"   # dashboard Traefik só local
     volumes:
       - ./traefik/traefik.yml:/etc/traefik/traefik.yml:ro
-      - ./traefik/dynamic:/etc/traefik/dynamic:ro
+      - ./traefik/dynamic/routes.yml:/etc/traefik/dynamic/routes.yml:ro
     restart: unless-stopped
     networks:
       - sala_net

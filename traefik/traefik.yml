@@ -8,8 +8,8 @@ api:
 
 providers:
   file:
-    directory: /etc/traefik/dynamic
-    watch: true
+    filename: /etc/traefik/dynamic/routes.yml
+    watch: false
 
 entryPoints:
   web:
