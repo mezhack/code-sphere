@@ -2,17 +2,37 @@
 
 **Status:** Implemented
 **Owner:** Project lead
-**Last Updated:** 2026-04-29
+**Last Updated:** 2026-05-11
 
 ## Context
 
 Teachers may run an outdated version of the platform without realizing it. They might request features already implemented, or miss bug fixes that would help them. This feature shows the current version in the admin panel and displays a banner when a newer version is available on GitHub.
 
+Students can also follow platform changes through a public changelog page linked from the login screen.
+
 See [ADR-0008](../decisions/0008-version-check-github.md) for the decision rationale.
 
 ## Behavior
 
-### Display Current Version
+### Version Badge on Login Page
+
+The student login page shows the current version as a clickable badge at the bottom of the card:
+
+```
+Versão 1.0.2 — Changelog · Sobre
+```
+
+- "Versão 1.0.2" is injected via a Flask context processor (`injetar_versao`) that reads `version.json` and exposes `versao_atual` to all templates.
+- "Changelog" links to `/changelog` (public, no auth required).
+- "Sobre" links to `/about` (public, no auth required).
+
+### Public Changelog Page (`/changelog`)
+
+- Accessible to anyone, including students who are not logged in.
+- Reads `version.json` and renders all version entries in reverse order.
+- "← Voltar" button returns to `/`.
+
+### Display Current Version (Admin Panel)
 
 1. Admin panel header shows a button labeled `📋 v1.0.0` (or whatever the current version is).
 2. Clicking the button opens `/admin/changelog` showing the full changelog from `version.json`.
@@ -43,7 +63,8 @@ JavaScript receives the JSON and:
 
 - JSON with version comparison.
 - HTML banner in admin panel.
-- HTML changelog page.
+- HTML changelog pages (admin and public).
+- Version badge injected into every template via context processor.
 
 ### Edge Cases
 
@@ -69,15 +90,22 @@ JavaScript receives the JSON and:
 ## Integration Points
 
 - **Admin Panel:** the banner renders at the top of the panel; the version button is in the header.
+- **Login Page:** public version badge with links to `/changelog` and `/about`.
 
 ## Implementation References
 
 - `portal/app.py:versao_local` — reads `version.json`
 - `portal/app.py:verificar_atualizacao` — queries GitHub and caches
 - `portal/app.py:admin_api_versao` — JSON endpoint consumed by JS
-- `portal/app.py:admin_changelog` — full changelog page route
-- `portal/templates/admin_painel.html` — JavaScript that renders the banner
-- `portal/templates/admin_changelog.html` — changelog UI
+- `portal/app.py:admin_changelog` — admin changelog page route
+- `portal/app.py:changelog_publico` — public `/changelog` route (no auth)
+- `portal/app.py:about` — public `/about` route (no auth)
+- `portal/app.py:injetar_versao` — context processor that exposes `versao_atual` to all templates
+- `portal/templates/login.html` — version badge and links at bottom of card
+- `portal/templates/changelog.html` — public changelog UI
+- `portal/templates/about.html` — credits page
+- `portal/templates/admin_painel.html` — JavaScript that renders the update banner
+- `portal/templates/admin_changelog.html` — admin changelog UI
 - `portal/version.json` — version metadata
 
 ## Related

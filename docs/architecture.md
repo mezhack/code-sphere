@@ -2,7 +2,7 @@
 
 ## What This System Is
 
-Sala de Aula Docker is a self-hosted classroom platform that provides each student with an isolated, browser-accessible Python development environment. The system targets schools where students use Chromebooks or other restricted devices that cannot install development tools locally.
+**code-sphere** is a self-hosted classroom platform that provides each student with an isolated, browser-accessible Python development environment. The system targets schools where students use Chromebooks or other restricted devices that cannot install development tools locally.
 
 ## Core Goals
 
@@ -57,7 +57,9 @@ Routes incoming HTTP requests to the correct container based on URL path. All ro
 The Docker label provider is not used — Traefik's internal Docker API client (v1.24) is incompatible with Docker Engine 29.x which enforces a minimum of v1.40. See ADR-0002.
 
 Key paths:
-- `/` and `/admin` → Portal (Flask)
+- `/`, `/login`, `/conectar`, `/trocar-senha` → Portal (student flows)
+- `/admin`, `/admin/painel` → Portal (teacher flows)
+- `/changelog`, `/about`, `/static` → Portal (public, no login required)
 - `/code/aluno01/` → Student 01's code-server
 - `/code/aluno02/` → Student 02's code-server
 
@@ -110,6 +112,16 @@ The portal's state is two JSON files in `portal-data/`:
 Student work persists in `alunos/alunoXX/workspace/`. These directories are owned by UID 911 (the `abc` user inside `linuxserver/code-server`) and bind-mounted into the containers.
 
 The portal can be rebuilt and restarted without affecting student data or active sessions, as long as the JSON files are preserved.
+
+### Fast restart for pre-warmed containers
+
+When a student logs in and their container is already running (started by `preaquecer.sh`), the portal avoids recreating the container. Instead it:
+
+1. Overwrites `/var/run/s6/container_environment/PASSWORD` inside the container with the new session token (this file is read by `with-contenv` at every process start).
+2. Calls `s6-svc -r /run/service/svc-code-server` via `docker exec` to restart only the code-server process.
+3. Polls until code-server is healthy again (~1–2 seconds).
+
+If either exec step fails, the portal falls back to the full recreate flow. See [ADR-0009](./decisions/0009-fast-restart-s6.md) for the rationale and the key finding about password source priority.
 
 ### Async container startup with client-side polling
 

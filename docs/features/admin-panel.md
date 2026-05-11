@@ -2,7 +2,7 @@
 
 **Status:** Implemented
 **Owner:** Project lead
-**Last Updated:** 2026-04-29
+**Last Updated:** 2026-05-11
 
 ## Context
 
@@ -11,6 +11,10 @@ The teacher needs to monitor the classroom in real time and intervene when somet
 The panel is consulted live during class. It must load fast (under 1 second), update without full-page reloads, and not lock up if some containers are misbehaving.
 
 ## Behavior
+
+### Topbar
+
+The panel header shows the code-sphere logo alongside the "Painel do Professor" title. To the right, the version button (`📋 vX.Y.Z`) opens the admin changelog. The update banner (if a newer version exists on GitHub) appears just below the header.
 
 ### Initial Load
 

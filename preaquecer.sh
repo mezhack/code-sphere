@@ -3,8 +3,10 @@
 # preaquecer.sh - Sobe os containers dos alunos com antecedência
 # =============================================================================
 # Use este script 10-15 minutos ANTES da aula começar.
-# Os containers inicializam em background enquanto você prepara a aula,
-# e quando os alunos chegarem tudo já estará pronto e rápido.
+# Os containers inicializam em background enquanto você prepara a aula.
+# Quando os alunos fizerem login, o portal reutiliza o container já rodando
+# — apenas reinicia o processo code-server com o novo token (~1-2 segundos)
+# em vez de recriar o container do zero (15-45 segundos).
 #
 # Uso:
 #   ./preaquecer.sh           → aquece todos os alunos
@@ -88,7 +90,10 @@ echo " Já estavam rodando: $ja_rodando"
 [ "$erros" -gt 0 ] && echo " Erros:              $erros (rode docker ps para checar)"
 echo ""
 echo " Os containers estão inicializando em background."
-echo " Em 2-3 minutos estarão prontos para os alunos."
+echo " Em 2-3 minutos o code-server de cada aluno estará carregado."
+echo ""
+echo " Quando os alunos fizerem login, a conexão será quase instantânea:"
+echo " o portal reutiliza o container já rodando e troca só o token (~1-2s)."
 echo ""
 echo " Dica: para confirmar que está tudo no ar:"
 echo "   docker ps | grep sala_aluno | wc -l"

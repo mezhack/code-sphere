@@ -110,21 +110,55 @@ def _senha_config_yaml(aluno: str) -> str | None:
         pass
     return None
 
+def _reiniciar_code_server(aluno: str, token: str) -> bool:
+    """
+    Troca o token de um container já rodando sem recriá-lo.
+    Atualiza /var/run/s6/container_environment/PASSWORD (lido pelo
+    with-contenv a cada restart do processo) e reinicia só o processo
+    code-server via s6-svc. Retorna True se o restart foi disparado.
+    Se falhar por qualquer motivo, retorna False e o chamador cai no
+    fluxo normal de recriar o container.
+    """
+    try:
+        c = dc().containers.get(f"sala_{aluno}")
+        # Atualiza o env var que with-contenv injeta no próximo start do processo
+        r1 = c.exec_run(
+            ["bash", "-c",
+             f"printf '%s' '{token}' > /var/run/s6/container_environment/PASSWORD"],
+            user="root"
+        )
+        if r1.exit_code != 0:
+            app.logger.warning(f"Falha ao atualizar env PASSWORD de {aluno}: {r1.output}")
+            return False
+        # Remove config.yaml para evitar que senha antiga persista
+        _apagar_config_yaml(aluno)
+        # Reinicia só o processo code-server (s6-supervise o sobe automaticamente)
+        r2 = c.exec_run(["s6-svc", "-r", "/run/service/svc-code-server"])
+        if r2.exit_code != 0:
+            app.logger.warning(f"Falha ao reiniciar svc-code-server de {aluno}: {r2.output}")
+            return False
+        app.logger.info(f"Reinício rápido de code-server de {aluno} via s6-svc bem-sucedido")
+        return True
+    except Exception as e:
+        app.logger.warning(f"Exceção no reinício rápido de {aluno}: {e}")
+        return False
+
 def iniciar_container(aluno, token):
     cname = f"sala_{aluno}"
     try: container = dc().containers.get(cname)
     except docker.errors.NotFound:
         app.logger.error(f"{cname} não existe"); return False
     if container.status == "running":
-        # code-server usa config.yaml se existir — comparar contra ele, não o env do Docker
-        senha_efetiva = _senha_config_yaml(aluno)
-        if senha_efetiva is None:
-            # sem config.yaml: code-server usa o env PASSWORD; comparar contra ele
-            env = container.attrs.get("Config", {}).get("Env") or []
-            senha_efetiva = next((e.split("=", 1)[1] for e in env if e.startswith("PASSWORD=")), None)
-        if senha_efetiva == token:
+        # Verifica se o token já está ativo (container pré-aquecido com token correto)
+        env = container.attrs.get("Config", {}).get("Env") or []
+        senha_env = next((e.split("=", 1)[1] for e in env if e.startswith("PASSWORD=")), None)
+        if senha_env == token:
             return aguardar_code_server(aluno, timeout=15)
-        # Senha efetiva não bate com o token — para para recriar
+        # Token diferente — tenta reinício rápido via docker exec (sem recriar container)
+        if _reiniciar_code_server(aluno, token):
+            return aguardar_code_server(aluno, timeout=30)
+        # Fallback: fluxo normal de parar e recriar
+        app.logger.info(f"Reinício rápido falhou para {aluno}, recriando container")
         try: container.stop(timeout=10)
         except Exception as e: app.logger.warning(f"Erro ao parar {cname}: {e}")
         try: container = dc().containers.get(cname)

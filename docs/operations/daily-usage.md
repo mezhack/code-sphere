@@ -34,7 +34,9 @@ Display this URL in class for students to access.
 ./preaquecer.sh
 ```
 
-Pre-warming starts the containers in advance, so the first login of the day for each student feels instant. Without pre-warming, the first login takes 30–45 seconds while the container boots.
+Pre-warming starts the containers in advance. When a student logs in, the portal detects the container is already running and performs a **fast restart**: it updates the authentication token inside the running container and restarts only the code-server process via `s6-svc`. This takes ~1–2 seconds instead of the 15–45 seconds required to recreate the container from scratch.
+
+Without pre-warming, every first login of the day triggers a full container recreation. Students see a loading screen for 30–45 seconds.
 
 ## During Class
 
