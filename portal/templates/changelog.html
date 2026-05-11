@@ -1,0 +1,31 @@
+{% extends "base.html" %}
+{% block titulo %}Novidades — code-sphere{% endblock %}
+{% block conteudo %}
+
+<div class="topbar">
+  <h1>📋 Changelog</h1>
+  <a href="{{ url_for('login') }}" class="btn btn-sm" style="background:#6b7280">← Voltar</a>
+</div>
+
+<div class="info" style="margin-bottom:24px">
+  <strong>Versão atual:</strong> {{ info.version }}
+  {% if info.release_date %}
+    &nbsp;·&nbsp; {{ info.release_date }}
+  {% endif %}
+</div>
+
+{% for versao, dados in info.changelog.items() %}
+  <h2 style="margin-top:28px">
+    v{{ versao }}
+    <span class="muted" style="font-size:14px;font-weight:normal;margin-left:8px">
+      {{ dados.date }}
+    </span>
+  </h2>
+  <ul style="margin:8px 0 0 20px;line-height:2">
+    {% for item in dados.changes %}
+      <li style="font-size:15px">{{ item }}</li>
+    {% endfor %}
+  </ul>
+{% endfor %}
+
+{% endblock %}

@@ -21,4 +21,16 @@
   <p class="muted" style="margin-top:28px;font-size:13px;text-align:center">
     Esqueceu a senha? Fale com o professor.
   </p>
+
+  <p style="text-align:center;margin-top:20px;display:flex;justify-content:center;gap:16px">
+    <a href="{{ url_for('changelog') }}"
+       style="font-size:12px;color:var(--magenta);text-decoration:none;opacity:.7">
+      Versão {{ versao_atual }} — Changelog
+    </a>
+    <span style="font-size:12px;color:#d1d5db">·</span>
+    <a href="{{ url_for('about') }}"
+       style="font-size:12px;color:var(--magenta);text-decoration:none;opacity:.7">
+      Sobre
+    </a>
+  </p>
 {% endblock %}

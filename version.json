@@ -13,7 +13,12 @@
         "Cabeçalhos de tabela e caixas de estatísticas com tom lavanda da identidade visual",
         "Sistema de design harmonizado com variáveis CSS: --deep, --purple, --magenta, --grad",
         "Barra de progresso do conectar.html usa gradiente da marca via var(--grad)",
-        "Fix: rota /static adicionada ao Traefik para servir arquivos estáticos do portal"
+        "Tela de login simplificada: textos redundantes removidos, logo assume protagonismo",
+        "Página pública /changelog acessível a alunos via link no rodapé do login",
+        "Página /about com créditos do criador da plataforma e da identidade visual",
+        "Rodapé da tela de login com links para Changelog e Sobre",
+        "Fix: rota /static adicionada ao Traefik para servir arquivos estáticos do portal",
+        "Fix: rotas /changelog e /about adicionadas ao Traefik"
       ]
     },
     "1.0.1": {

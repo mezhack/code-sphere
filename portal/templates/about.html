@@ -1,0 +1,46 @@
+{% extends "base.html" %}
+{% block titulo %}Sobre — code-sphere{% endblock %}
+{% block conteudo %}
+
+<div class="topbar">
+  <h1>Sobre</h1>
+  <a href="{{ url_for('login') }}" class="btn btn-sm" style="background:#6b7280">← Voltar</a>
+</div>
+
+<p style="font-size:15px;color:#444;line-height:1.7;margin-bottom:28px">
+  O <strong>code-sphere</strong> é uma plataforma de programação via IDE web em rede local,
+  desenvolvida para que alunos possam programar diretamente pelo navegador, sem instalação
+  de software nos dispositivos.
+</p>
+
+<h2>Criação e desenvolvimento</h2>
+
+<div style="display:flex;flex-direction:column;gap:16px;margin-top:4px">
+
+  <div style="display:flex;align-items:flex-start;gap:16px;padding:16px;
+              background:linear-gradient(135deg,#F3F0FF,#EDE9F5);
+              border-radius:8px;border-left:4px solid var(--deep)">
+    <div style="font-size:32px;line-height:1">👨‍💻</div>
+    <div>
+      <strong style="color:var(--deep);font-size:15px">João Pedro Guimarães Borba</strong>
+      <p class="muted" style="margin:4px 0 0">
+        Professor de Programação · Criador e programador da plataforma
+      </p>
+    </div>
+  </div>
+
+  <div style="display:flex;align-items:flex-start;gap:16px;padding:16px;
+              background:linear-gradient(135deg,#F9F0FF,#F3E9F7);
+              border-radius:8px;border-left:4px solid var(--magenta)">
+    <div style="font-size:32px;line-height:1">🎨</div>
+    <div>
+      <strong style="color:var(--magenta);font-size:15px">Bianca Guedes de Andrade</strong>
+      <p class="muted" style="margin:4px 0 0">
+        Aluna · Criadora do nome e da identidade visual da plataforma
+      </p>
+    </div>
+  </div>
+
+</div>
+
+{% endblock %}

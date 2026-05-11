@@ -418,6 +418,10 @@ def admin_api_stats():
 @app.route("/healthz")
 def healthz(): return {"ok": True}
 
+@app.context_processor
+def injetar_versao():
+    return {"versao_atual": versao_local().get("version", "")}
+
 inicializar_alunos()
 iniciar_gc()
 
@@ -609,3 +613,12 @@ def admin_changelog():
     checar_admin()
     info = versao_local()
     return render_template("admin_changelog.html", info=info)
+
+@app.route("/changelog")
+def changelog():
+    info = versao_local()
+    return render_template("changelog.html", info=info)
+
+@app.route("/about")
+def about():
+    return render_template("about.html")
