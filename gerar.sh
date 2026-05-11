@@ -76,7 +76,7 @@ cat >> "$ROUTES" <<'R_HEADER'
   routers:
 
     portal-router:
-      rule: "Path(`/`) || PathPrefix(`/login`) || PathPrefix(`/logout`) || PathPrefix(`/trocar-senha`) || PathPrefix(`/conectar`) || PathPrefix(`/aguardar`) || PathPrefix(`/ping`) || PathPrefix(`/heartbeat`) || PathPrefix(`/admin`) || PathPrefix(`/healthz`)"
+      rule: "Path(`/`) || PathPrefix(`/login`) || PathPrefix(`/logout`) || PathPrefix(`/trocar-senha`) || PathPrefix(`/conectar`) || PathPrefix(`/aguardar`) || PathPrefix(`/ping`) || PathPrefix(`/heartbeat`) || PathPrefix(`/admin`) || PathPrefix(`/healthz`) || PathPrefix(`/static`)"
       entryPoints:
         - web
       priority: 50

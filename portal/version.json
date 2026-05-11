@@ -1,7 +1,34 @@
 {
-  "version": "1.0.0",
-  "release_date": "2026-04-29",
+  "version": "1.0.2",
+  "release_date": "2026-05-11",
   "changelog": {
+    "1.0.2": {
+      "date": "2026-05-11",
+      "changes": [
+        "Rebranding: plataforma renomeada para code-sphere",
+        "Logo adicionado às telas de login do aluno, login do admin e topbar do painel",
+        "Redesign visual: fundo com gradiente escuro alinhado às cores do logo (navy → roxo)",
+        "Strip superior com gradiente de marca em todos os cards",
+        "Botões com gradiente azul-roxo e micro-animação de hover",
+        "Cabeçalhos de tabela e caixas de estatísticas com tom lavanda da identidade visual",
+        "Sistema de design harmonizado com variáveis CSS: --deep, --purple, --magenta, --grad",
+        "Barra de progresso do conectar.html usa gradiente da marca via var(--grad)",
+        "Fix: rota /static adicionada ao Traefik para servir arquivos estáticos do portal"
+      ]
+    },
+    "1.0.1": {
+      "date": "2026-05-08",
+      "changes": [
+        "Fix: startup de containers agora assíncrono — página retorna imediatamente, JS aguarda via polling",
+        "Fix: endpoint /aguardar e /ping adicionados para polling do cliente e reconexão automática",
+        "Fix: dupla mensagem de flash ('Senha alterada!' + 'Senha atual incorreta.') eliminada",
+        "Fix: senha comparada lendo config.yaml do aluno em vez da variável de ambiente do container",
+        "Fix: config.yaml apagado antes de recriar container para evitar conflito de senha no primeiro login",
+        "Fix: Traefik montando arquivo routes.yml diretamente em vez de diretório (bug WSL2 bind-mount)",
+        "Fix: traefik.yml usa 'filename:' com watch: false em lugar de 'directory:'",
+        "Fix: volume /alunos sem :ro para permitir que o portal apague config.yaml"
+      ]
+    },
     "1.0.0": {
       "date": "2026-04-29",
       "changes": [

@@ -1,8 +1,10 @@
 {% extends "base.html" %}
-{% block titulo %}Entrar - Sala de Aula{% endblock %}
+{% block titulo %}Entrar{% endblock %}
 {% block conteudo %}
-  <h1>Programação de Jogos Digitais</h1>
-  <p class="muted" style="margin-top:-18px;margin-bottom:22px">Entre com seu usuário e senha.</p>
+  <div style="text-align:center;margin-bottom:20px;padding-top:4px">
+    <img src="{{ url_for('static', filename='logo.png') }}" alt="code-sphere"
+         style="width:72%;max-width:280px;display:block;margin:0 auto">
+  </div>
 
   <form method="post" action="{{ url_for('login') }}" autocomplete="off">
     <label for="usuario">Usuário</label>
@@ -13,7 +15,7 @@
     <label for="senha">Senha</label>
     <input type="password" id="senha" name="senha" required>
 
-    <button type="submit">Entrar</button>
+    <button type="submit" style="width:100%;margin-top:22px">Entrar</button>
   </form>
 
   <p class="muted" style="margin-top:28px;font-size:13px;text-align:center">

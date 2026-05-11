@@ -5,7 +5,7 @@
 
 <div class="topbar">
   <div>
-    <a href="{{ url_for('admin_painel') }}" style="color:#1f4e79;text-decoration:none;font-size:14px">
+    <a href="{{ url_for('admin_painel') }}" style="color:#1A237E;text-decoration:none;font-size:14px">
       ← Painel
     </a>
     <h1 style="display:inline;margin-left:12px">📁 {{ aluno }}</h1>
@@ -27,12 +27,12 @@
 
 <style>
   .arvore { font-family: monospace; font-size: 14px; line-height: 1.8; }
-  .dir-nome { font-weight: 600; color: #1f4e79; cursor: pointer; user-select: none; }
+  .dir-nome { font-weight: 600; color: #1A237E; cursor: pointer; user-select: none; }
   .dir-nome::before { content: "📂 "; }
   .dir-conteudo { margin-left: 20px; border-left: 2px solid #e5e7eb; padding-left: 12px; }
   .dir-conteudo.fechado { display: none; }
   .arquivo-link { text-decoration: none; color: #374151; display: inline-block; }
-  .arquivo-link:hover { color: #1f4e79; text-decoration: underline; }
+  .arquivo-link:hover { color: #1A237E; text-decoration: underline; }
   .ext-py::before  { content: "🐍 "; }
   .ext-txt::before { content: "📄 "; }
   .ext-md::before  { content: "📝 "; }

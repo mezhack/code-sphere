@@ -3,31 +3,39 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
-  <title>{% block titulo %}Sala de Aula{% endblock %}</title>
+  <title>{% block titulo %}code-sphere{% endblock %}</title>
   <style>
+    :root{
+      --deep:#1A237E;
+      --purple:#5B0E70;
+      --magenta:#7B1984;
+      --grad:linear-gradient(135deg,var(--deep) 0%,var(--magenta) 100%);
+    }
     *{box-sizing:border-box}
-    body{font-family:system-ui,-apple-system,sans-serif;background:#eef2f7;color:#222;margin:0;min-height:100vh;display:flex;align-items:center;justify-content:center;padding:20px}
-    .card{background:#fff;border-radius:12px;padding:36px;box-shadow:0 4px 24px rgba(0,0,0,.08);width:100%;max-width:420px}
-    .card.wide{max-width:960px}
-    h1{color:#1f4e79;margin:0 0 24px;font-size:26px}
-    h2{color:#1f4e79;margin:30px 0 12px;font-size:18px;border-bottom:1px solid #eee;padding-bottom:6px}
+    body{font-family:system-ui,-apple-system,sans-serif;background:linear-gradient(135deg,#0D1057 0%,var(--deep) 45%,var(--purple) 100%);background-attachment:fixed;color:#222;margin:0;min-height:100vh;display:flex;align-items:center;justify-content:center;padding:20px}
+    .card{background:#fff;border-radius:12px;padding:36px;box-shadow:0 8px 48px rgba(0,0,0,.4),0 2px 12px rgba(91,14,112,.3);width:100%;max-width:420px;position:relative;overflow:hidden}
+    .card::before{content:'';position:absolute;top:0;left:0;right:0;height:4px;background:var(--grad)}
+    .card.wide{max-width:980px}
+    h1{color:var(--deep);margin:0 0 24px;font-size:26px}
+    h2{color:var(--deep);margin:30px 0 12px;font-size:18px;border-bottom:2px solid #EDE9F5;padding-bottom:6px}
     label{display:block;margin:14px 0 6px;font-weight:600;font-size:14px;color:#555}
-    input[type=text],input[type=password]{width:100%;padding:10px 12px;border:1px solid #d1d5db;border-radius:6px;font-size:15px;font-family:inherit}
-    input:focus{outline:none;border-color:#1f4e79;box-shadow:0 0 0 3px rgba(31,78,121,.1)}
-    button,.btn{background:#1f4e79;color:#fff;border:none;padding:11px 20px;border-radius:6px;font-size:15px;font-weight:600;cursor:pointer;font-family:inherit;text-decoration:none;display:inline-block;margin-top:18px}
-    button:hover,.btn:hover{background:#16395a}
-    .btn-danger{background:#c0392b}
-    .btn-danger:hover{background:#922b1f}
+    input[type=text],input[type=password]{width:100%;padding:10px 12px;border:1px solid #d1d5db;border-radius:6px;font-size:15px;font-family:inherit;transition:border-color .2s,box-shadow .2s}
+    input:focus{outline:none;border-color:var(--deep);box-shadow:0 0 0 3px rgba(26,35,126,.12)}
+    button,.btn{background:var(--grad);color:#fff;border:none;padding:11px 20px;border-radius:6px;font-size:15px;font-weight:600;cursor:pointer;font-family:inherit;text-decoration:none;display:inline-block;margin-top:18px;transition:opacity .15s,transform .1s}
+    button:hover,.btn:hover{opacity:.9;transform:translateY(-1px)}
+    button:active,.btn:active{transform:translateY(0)}
+    .btn-danger{background:linear-gradient(135deg,#c0392b,#922b1f)}
+    .btn-danger:hover{opacity:.9}
     .btn-sm{padding:5px 10px;font-size:13px;margin:0}
     .flash{padding:10px 14px;border-radius:6px;margin:15px 0;font-size:14px}
     .flash.erro{background:#fde8e8;color:#9b1c1c;border-left:4px solid #c0392b}
     .flash.sucesso{background:#e1f7ea;color:#0a5c2f;border-left:4px solid #28a745}
-    .info{background:#e7f0f9;color:#1f4e79;padding:12px 16px;border-radius:6px;font-size:14px;margin-bottom:18px;border-left:4px solid #1f4e79}
+    .info{background:#E8EAF6;color:var(--deep);padding:12px 16px;border-radius:6px;font-size:14px;margin-bottom:18px;border-left:4px solid var(--deep)}
     .aviso{background:#fff7e6;color:#8a5a00;padding:12px 16px;border-radius:6px;font-size:14px;margin-bottom:18px;border-left:4px solid #f5a623}
     table{width:100%;border-collapse:collapse;margin-top:12px}
-    th,td{padding:10px 8px;text-align:left;border-bottom:1px solid #eee;font-size:14px}
-    th{background:#f5f7fa;color:#555;font-weight:600;font-size:13px;text-transform:uppercase;letter-spacing:.5px}
-    tr:hover{background:#fafbfc}
+    th,td{padding:10px 8px;text-align:left;border-bottom:1px solid #EDE9F5;font-size:14px}
+    th{background:linear-gradient(90deg,#F3F0FF,#EDE9F5);color:#3d1a6e;font-weight:600;font-size:13px;text-transform:uppercase;letter-spacing:.5px}
+    tr:hover{background:#FAF8FF}
     .tag{display:inline-block;padding:2px 8px;border-radius:10px;font-size:12px;font-weight:600}
     .tag-on{background:#d1fae5;color:#065f46}
     .tag-off{background:#e5e7eb;color:#4b5563}
@@ -36,8 +44,8 @@
     .topbar{display:flex;justify-content:space-between;align-items:center;margin-bottom:20px}
     .topbar h1{margin:0}
     form.inline{display:inline}
-    .stat{display:inline-block;background:#f5f7fa;padding:10px 18px;border-radius:8px;margin-right:10px;font-size:14px}
-    .stat strong{color:#1f4e79;font-size:20px;display:block}
+    .stat{display:inline-block;background:linear-gradient(135deg,#F3F0FF,#EDE9F5);padding:10px 18px;border-radius:8px;margin-right:10px;font-size:14px;border:1px solid #e0d9f5}
+    .stat strong{color:var(--deep);font-size:20px;display:block}
   </style>
 </head>
 <body>

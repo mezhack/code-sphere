@@ -1,11 +1,16 @@
 {% extends "base.html" %}
 {% block titulo %}Admin{% endblock %}
 {% block conteudo %}
-  <h1>Área do Professor</h1>
+  <div style="text-align:center;margin-bottom:20px;padding-top:4px">
+    <img src="{{ url_for('static', filename='logo.png') }}" alt="code-sphere"
+         style="width:72%;max-width:280px;display:block;margin:0 auto">
+  </div>
+
+  <h1 style="text-align:center;margin-bottom:24px">Área do Professor</h1>
 
   <form method="post" action="{{ url_for('admin_login') }}" autocomplete="off">
     <label for="senha">Senha de administrador</label>
     <input type="password" id="senha" name="senha" required autofocus>
-    <button type="submit">Entrar</button>
+    <button type="submit" style="width:100%;margin-top:22px">Entrar</button>
   </form>
 {% endblock %}

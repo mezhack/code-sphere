@@ -3,7 +3,10 @@
 {% block classe_extra %}wide{% endblock %}
 {% block conteudo %}
   <div class="topbar">
-    <h1>Painel do Professor</h1>
+    <div style="display:flex;align-items:center;gap:12px">
+      <img src="{{ url_for('static', filename='logo.png') }}" alt="code-sphere" style="height:44px">
+      <h1>Painel do Professor</h1>
+    </div>
     <div>
       <a href="{{ url_for('admin_changelog') }}" class="btn btn-sm" style="background:#0d9488">📋 v<span id="versao-local">...</span></a>
       <a href="{{ url_for('index') }}" class="btn btn-sm" style="background:#6b7280">Portal alunos</a>
