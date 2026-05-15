@@ -9,6 +9,7 @@
     </div>
     <div>
       <a href="{{ url_for('admin_changelog') }}" class="btn btn-sm" style="background:#0d9488">📋 v<span id="versao-local">...</span></a>
+      <button onclick="verificarVersao(true)" class="btn btn-sm" style="background:#6b7280" title="Verificar atualizações agora">🔄</button>
       <a href="{{ url_for('index') }}" class="btn btn-sm" style="background:#6b7280">Portal alunos</a>
       <a href="{{ url_for('admin_logout') }}" class="btn btn-sm" style="background:#6b7280">Sair</a>
     </div>
@@ -146,9 +147,9 @@
     setInterval(atualizarStats, 30000);
 
     // Verifica versão ao carregar
-    async function verificarVersao() {
+    async function verificarVersao(force = false) {
       try {
-        const r = await fetch("/admin/api/versao");
+        const r = await fetch("/admin/api/versao" + (force ? "?force=1" : ""));
         const d = await r.json();
         const elV = document.getElementById("versao-local");
         if (elV) elV.textContent = d.versao_local;
@@ -156,13 +157,42 @@
         if (!banner) return;
         if (d.tem_atualizacao) {
           banner.style.display = "block";
-          banner.innerHTML = '<div style="background:#fef3c7;border-left:4px solid #f5a623;padding:12px 16px;border-radius:6px;display:flex;justify-content:space-between;align-items:center"><span>🆕 <strong>Nova versão: v' + d.versao_remota + '</strong> — você usa v' + d.versao_local + '</span><a href="' + d.url_release + '" target="_blank" class="btn btn-sm" style="background:#f5a623;margin-top:0">Ver novidades</a></div>';
+          banner.innerHTML = `
+            <div style="background:#fef3c7;border-left:4px solid #f5a623;padding:14px 16px;border-radius:6px">
+              <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px">
+                <span>🆕 <strong>Nova versão: v${d.versao_remota}</strong> — você usa v${d.versao_local}</span>
+                <a href="${d.url_release}" target="_blank" class="btn btn-sm" style="background:#f5a623;margin-top:0">Ver novidades</a>
+              </div>
+              <div style="margin-top:10px;background:#fffbeb;border-radius:4px;padding:8px 12px;font-size:13px;color:#78350f">
+                Para atualizar, rode no terminal do servidor:
+                <code style="display:block;margin-top:4px;font-size:13px;user-select:all">./atualizar.sh</code>
+              </div>
+            </div>`;
         } else if (d.versao_remota) {
           banner.style.display = "block";
-          banner.innerHTML = '<div style="background:#d1fae5;border-left:4px solid #28a745;padding:10px 16px;border-radius:6px;font-size:13px;color:#065f46">✔ Sistema atualizado (v' + d.versao_local + ')</div>';
-          setTimeout(function(){ banner.style.display="none"; }, 5000);
+          banner.innerHTML = '<div style="background:#d1fae5;border-left:4px solid #28a745;padding:10px 16px;border-radius:6px;font-size:13px;color:#065f46">✔ Sistema atualizado — você já usa a versão mais recente (v' + d.versao_local + ')</div>';
+          if (!force) setTimeout(function(){ banner.style.display="none"; }, 5000);
+        } else if (force) {
+          const msgs = {
+            "rate_limit":    "⚠ Limite de verificações do GitHub atingido (60/hora por IP). Tente novamente mais tarde.",
+            "sem_releases":  "⚠ Nenhum release publicado no GitHub ainda — a verificação de atualizações ficará disponível após o primeiro release ser publicado.",
+            "sem_internet":  "⚠ Sem acesso ao GitHub. Verifique a conexão do servidor.",
+          };
+          const msg = msgs[d.erro] || ("⚠ Não foi possível verificar atualizações: " + (d.erro || "erro desconhecido"));
+          banner.style.display = "block";
+          banner.innerHTML = '<div style="background:#f3f4f6;border-left:4px solid #9ca3af;padding:10px 16px;border-radius:6px;font-size:13px;color:#374151">' + msg + ' <span class="muted">(v' + d.versao_local + ' instalada)</span></div>';
+          setTimeout(function(){ banner.style.display="none"; }, 8000);
         }
-      } catch(e) {}
+      } catch(e) {
+        if (force) {
+          const banner = document.getElementById("versao-banner");
+          if (banner) {
+            banner.style.display = "block";
+            banner.innerHTML = '<div style="background:#fee2e2;border-left:4px solid #ef4444;padding:10px 16px;border-radius:6px;font-size:13px;color:#7f1d1d">✗ Erro ao verificar atualizações.</div>';
+            setTimeout(function(){ banner.style.display="none"; }, 8000);
+          }
+        }
+      }
     }
     verificarVersao();
   </script>

@@ -576,7 +576,7 @@ import urllib.request
 import urllib.error
 
 VERSION_FILE = Path("/app/version.json")
-GITHUB_REPO  = "seu-usuario/sala-de-aula-docker"  # atualizar antes de publicar
+GITHUB_REPO  = "mezhack/code-sphere"
 _update_cache = {"result": None, "checado_em": 0}
 _update_lock  = threading.Lock()
 
@@ -624,6 +624,13 @@ def verificar_atualizacao(force=False) -> dict:
                 if parse(tag) > parse(result["versao_local"]):
                     result["tem_atualizacao"] = True
 
+        except urllib.error.HTTPError as e:
+            if e.code == 403:
+                result["erro"] = "rate_limit"
+            elif e.code == 404:
+                result["erro"] = "sem_releases"
+            else:
+                result["erro"] = f"http_{e.code}"
         except urllib.error.URLError:
             result["erro"] = "sem_internet"
         except Exception as e:
