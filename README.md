@@ -1,5 +1,7 @@
 # Code Sphere — IDE Online para programacao em rede local
 
+![License: AGPL v3](https://img.shields.io/badge/License-AGPL_v3-blue.svg)
+
 Ambiente multi-usuário que dá **VS Code Web** (code-server) para cada aluno,
 com **portal próprio de autenticação**, **troca de senha obrigatória no
 primeiro login** e **desligamento automático de containers ociosos**.
@@ -15,7 +17,7 @@ sistema:
 - Declara os 60 alunos com suas identidades fixas.
 - Mantém os containers **parados** por padrão.
 - Liga automaticamente o container do aluno quando ele faz login.
-- Desliga depois de um tempo sem uso (padrão 30 min).
+- Desliga depois de um tempo sem uso (padrão 60 min).
 - Cada aluno define uma senha pessoal no primeiro acesso.
 
 ---
@@ -50,10 +52,12 @@ sistema:
 3. Portal valida a senha (hash argon2). Se OK:
    - Inicia o container Docker `sala_aluno07` com um token aleatório como
      senha do code-server.
-   - Redireciona o aluno já logado no code-server dele.
-4. A cada 60 segundos, o navegador do aluno manda um "heartbeat" para o
-   portal, marcando atividade.
-5. Se passam 30 minutos sem heartbeat, o garbage collector do portal
+   - Exibe uma tela de carregamento enquanto o container sobe em background.
+     O navegador faz polling em `/aguardar` e entra automaticamente no
+     code-server assim que ele responde.
+4. A cada 30 segundos, o navegador do aluno faz um ping silencioso ao portal
+   (`/ping`) marcando atividade.
+5. Se passam 60 minutos sem ping, o garbage collector do portal
    desliga o container do aluno automaticamente.
 
 **O aluno nunca conhece a senha do code-server.** Ele só conhece a senha
@@ -96,13 +100,16 @@ Teste: `docker ps` (precisa listar sem erro).
 
 ```ini
 QUANTIDADE_ALUNOS=60
+SIMULTANEOS=30          # máximo de alunos usando ao mesmo tempo
+DUAS_TURMAS=false       # true divide em Turma A e Turma B
 PORTA_PUBLICA=80
-INATIVIDADE_MINUTOS=30
 SENHA_INICIAL=trocar123              # senha que TODOS começam com
-SENHA_ADMIN=sua_senha_de_professor   # TROQUE ISTO
-LIMITE_MEMORIA=400m
+SENHA_ADMIN=sua_senha_de_professor   # definida interativamente pelo setup.sh
+LIMITE_MEMORIA=256m
 LIMITE_CPU=0.5
+INATIVIDADE_MINUTOS=60
 TIMEZONE=America/Sao_Paulo
+CLOUDFLARE_TUNNEL=false
 ```
 
 ### 2. Gere os arquivos
@@ -234,15 +241,20 @@ python3 nome_do_arquivo.py
 ## Estrutura de arquivos
 
 ```
-sala-de-aula/
-├── config.env                    ← configuração principal
-├── gerar.sh                      ← gera arquivos dinâmicos
+code-sphere/
+├── config.env                    ← configuração principal (gerado pelo setup.sh)
+├── setup.sh                      ← configuração interativa (execute primeiro)
+├── gerar.sh                      ← regenera docker-compose.yml e routes.yml
 ├── iniciar.sh                    ← sobe a sala
 ├── parar.sh                      ← para a sala
+├── atualizar.sh                  ← atualiza o sistema para nova versão
+├── preaquecer.sh                 ← sobe containers antes da aula começar
 ├── backup.sh                     ← backup dos workspaces
 ├── resetar_workspace.sh          ← apaga dados de um aluno
 ├── instalar_pacotes.sh           ← instala libs Python em todos
-├── requirements.txt              ← libs Python compartilhadas
+├── url_atual.sh                  ← exibe URL do Cloudflare Tunnel ativo
+├── aluno.Dockerfile              ← imagem dos containers dos alunos
+├── requirements.txt              ← libs Python pré-instaladas nos containers
 │
 ├── portal/                       ← aplicação Flask de autenticação
 │   ├── app.py                    ←   lógica principal
