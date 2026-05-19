@@ -77,7 +77,16 @@ The portal is the only component that talks to the Docker daemon. Student contai
 
 ### Student Containers (code-server)
 
-Each student gets one container based on a custom image extending `linuxserver/code-server`. The image adds Python 3, Pygame, PostgreSQL client, and pre-configured VS Code settings (autosave on, fixed font size).
+Each student gets one container based on a custom image extending `linuxserver/code-server`. The image adds Python 3, Pygame, PostgreSQL client, pre-configured VS Code settings (autosave on, fixed font size), and passwordless `sudo` for the `abc` user.
+
+Students can install packages directly from the integrated terminal without a password:
+
+```bash
+sudo apt install <package>
+pip install <package>
+```
+
+Note that packages installed via `sudo apt install` are lost when the container is stopped (idle timeout or end of class), because containers restart from the base image. Packages needed permanently for all classes should be added to `aluno.Dockerfile` and the image rebuilt.
 
 Containers start in `created` state and only run when:
 - The student logs in (portal starts the container on demand)

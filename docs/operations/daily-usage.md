@@ -69,6 +69,32 @@ If a student reports their VS Code is unresponsive:
 
 The container restarts in the background; auto-reconnect picks it up automatically.
 
+### Install Packages During Class
+
+Students can install packages themselves from the integrated terminal — no password needed:
+
+```bash
+# Instalar biblioteca Python
+pip install matplotlib
+
+# Instalar pacote do sistema
+sudo apt install <package>
+```
+
+**Important:** packages installed via `sudo apt install` are lost when the container stops (idle timeout or restart). If a package is needed every class, add it to `aluno.Dockerfile` and rebuild the image:
+
+```bash
+# In aluno.Dockerfile, add the package to the pip3 install block:
+RUN pip3 install --no-cache-dir --break-system-packages \
+    pygame \
+    matplotlib \   # ← add here
+    ...
+
+# Then rebuild and restart:
+docker build -f aluno.Dockerfile -t sala-aluno:latest .
+./parar.sh && ./iniciar.sh
+```
+
 ### View What a Student Is Doing
 
 Find their row, click "📁 Arquivos". Browse the workspace tree. Click any `.py` file to see the code with syntax highlighting. Press `R` in the file viewer to refresh after the student saves.

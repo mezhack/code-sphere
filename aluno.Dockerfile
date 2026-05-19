@@ -23,7 +23,12 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     git \
     curl \
     wget \
+    sudo \
     && rm -rf /var/lib/apt/lists/*
+
+# Permite que o usuário abc use sudo sem senha
+RUN echo "abc ALL=(ALL) NOPASSWD: ALL" > /etc/sudoers.d/abc && \
+    chmod 0440 /etc/sudoers.d/abc
 
 # Cria link python → python3 (para quem digitar só "python")
 RUN ln -sf /usr/bin/python3 /usr/bin/python
