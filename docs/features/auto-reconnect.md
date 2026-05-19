@@ -2,7 +2,7 @@
 
 **Status:** Implemented
 **Owner:** Project lead
-**Last Updated:** 2026-04-29
+**Last Updated:** 2026-05-19
 
 ## Context
 
@@ -14,7 +14,7 @@ This feature ensures that whenever a container is stopped while the student's ta
 
 ### Active Session Detection
 
-While the student is logged in and viewing the workspace, JavaScript in the auto-reconnect page (rendered after login) runs two timers:
+While the student is logged in, JavaScript in the `/conectar` hub page runs two timers:
 
 1. **Heartbeat (60s):** `POST /heartbeat` — refreshes `ultimo_acesso` so the GC won't stop the container.
 2. **Ping (30s):** `GET /ping` — checks if the container is still running.
@@ -28,7 +28,7 @@ When the GC has stopped the container or the session has expired:
    - `{ok: false, redirect: "/conectar"}` — the session is valid but the container is stopped; redirect to `/conectar`.
 2. JavaScript performs `window.location.href = redirect_url`.
 3. If redirected to `/conectar`, the portal sees a valid session and starts the container fresh (same flow as initial login).
-4. The student sees the loading screen briefly, then auto-submits to the workspace.
+4. The student sees the loading screen briefly; when code-server is ready, the "Abrir VS Code" and "Abrir Monitor" buttons are enabled and the student continues working.
 
 ### Inputs
 

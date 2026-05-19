@@ -5,7 +5,7 @@ This guide covers the operations a teacher performs during normal day-to-day use
 ## Starting Up (Beginning of Day)
 
 ```bash
-cd ~/sala-de-aula
+cd ~/code-sphere
 ./iniciar.sh
 ```
 
@@ -69,13 +69,23 @@ If a student reports their VS Code is unresponsive:
 
 The container restarts in the background; auto-reconnect picks it up automatically.
 
+### View a Student's Virtual Display
+
+Each student has a virtual graphical display accessible at `/screen/alunoXX/`. When a student runs `plt.show()` or any pygame window, the output appears there. You can view it from the admin panel (future) or directly:
+
+```
+http://<server-ip>/screen/aluno01/
+```
+
+Students open their own monitor by clicking **"Abrir Monitor"** on the `/conectar` hub page.
+
 ### Install Packages During Class
 
 Students can install packages themselves from the integrated terminal — no password needed:
 
 ```bash
-# Instalar biblioteca Python
-pip install matplotlib
+# Instalar biblioteca Python (matplotlib, pygame, psycopg2 já vêm pré-instalados)
+pip install pandas
 
 # Instalar pacote do sistema
 sudo apt install <package>
@@ -87,7 +97,8 @@ sudo apt install <package>
 # In aluno.Dockerfile, add the package to the pip3 install block:
 RUN pip3 install --no-cache-dir --break-system-packages \
     pygame \
-    matplotlib \   # ← add here
+    matplotlib \
+    pandas \    # ← add here
     ...
 
 # Then rebuild and restart:

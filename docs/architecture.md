@@ -28,17 +28,20 @@ The system is designed around three constraints that drive every architectural d
                                  │
                     ┌────────────▼────────────┐
                     │  Traefik (reverse proxy)│
-                    │  Routes /          → portal
-                    │  Routes /code/X/   → studentX
+                    │  Routes /           → portal
+                    │  Routes /code/X/    → studentX VS Code
+                    │  Routes /screen/X/  → studentX noVNC
                     └─────┬──────────────┬────┘
                           │              │
-                ┌─────────▼────┐    ┌────▼─────────────┐
-                │ Portal (Flask)│    │ Student Container │
-                │ - Auth        │    │ - code-server     │
-                │ - Sessions    │    │ - Python+Pygame   │
-                │ - Container   │    │ - PostgreSQL      │
-                │   lifecycle   │    │ - Persistent vol  │
-                └─────────┬─────┘    └───────────────────┘
+                ┌─────────▼────┐    ┌────▼─────────────────┐
+                │ Portal (Flask)│    │ Student Container      │
+                │ - Auth        │    │ - code-server (8443)  │
+                │ - Sessions    │    │ - Python+Pygame       │
+                │ - Container   │    │ - Xvfb+x11vnc+noVNC  │
+                │   lifecycle   │    │ - PostgreSQL          │
+                └─────────┬─────┘    │ - Persistent vol      │
+                          │          └────────────────────────┘
+                          │
                           │
                           │ Docker socket
                           │
@@ -60,8 +63,11 @@ Key paths:
 - `/`, `/login`, `/conectar`, `/trocar-senha` → Portal (student flows)
 - `/admin`, `/admin/painel` → Portal (teacher flows)
 - `/changelog`, `/about`, `/static` → Portal (public, no login required)
-- `/code/aluno01/` → Student 01's code-server
-- `/code/aluno02/` → Student 02's code-server
+- `/code/aluno01/` → Student 01's code-server (port 8443)
+- `/screen/aluno01/` → Student 01's noVNC virtual display (port 6080)
+- `/code/aluno02/` → Student 02's code-server (port 8443)
+- `/screen/aluno02/` → Student 02's noVNC virtual display (port 6080)
+- (and so on for all configured students)
 
 ### Portal (Flask + Gunicorn)
 
@@ -77,7 +83,9 @@ The portal is the only component that talks to the Docker daemon. Student contai
 
 ### Student Containers (code-server)
 
-Each student gets one container based on a custom image extending `linuxserver/code-server`. The image adds Python 3, Pygame, PostgreSQL client, pre-configured VS Code settings (autosave on, fixed font size), and passwordless `sudo` for the `abc` user.
+Each student gets one container based on a custom image extending `linuxserver/code-server`. The image adds Python 3, Pygame, matplotlib, PostgreSQL client, a virtual display stack (Xvfb + x11vnc + noVNC), pre-configured VS Code settings (autosave on, fixed font size), and passwordless `sudo` for the `abc` user.
+
+The virtual display runs on `:1` (Xvfb) inside each container and is exposed via noVNC on port 6080. When a student runs `plt.show()` or any pygame window, the graphical output appears on the virtual display and is accessible in the browser at `/screen/alunoXX/`.
 
 Students can install packages directly from the integrated terminal without a password:
 
@@ -134,7 +142,9 @@ If either exec step fails, the portal falls back to the full recreate flow. See 
 
 ### Async container startup with client-side polling
 
-When the portal starts a student's container, it returns the loading page immediately without blocking. The container is started in a background thread while the browser is already showing the progress animation. Client-side JavaScript polls `/aguardar` every 2 seconds; when code-server responds with HTTP 200 or 302, the autologin form is submitted automatically.
+When the portal starts a student's container, it returns the loading page (`/conectar`) immediately without blocking. The container is started in a background thread while the browser is already showing the progress animation. Client-side JavaScript polls `/aguardar` every 2 seconds; when code-server responds with HTTP 200 or 302, the "Abrir VS Code" and "Abrir Monitor" buttons are enabled.
+
+The `/conectar` page stays open permanently as a hub. Clicking "Abrir VS Code" auto-submits the authentication form (opening code-server in a new tab); clicking "Abrir Monitor" opens the noVNC virtual display in a new tab. The hub page keeps the heartbeat and ping running for as long as the student is active.
 
 This prevents the browser from showing a blank page during the 15–45 seconds it takes for code-server to boot, which previously led students to press Back and attempt a second login.
 
@@ -146,9 +156,11 @@ This prevents the browser from showing a blank page during the 15–45 seconds i
 4. Otherwise (or after password change), portal generates a 32-character random token.
 5. Portal saves the token in `sessoes.json`.
 6. If the container is not running: portal deletes any stale `config.yaml` from the student's volume, starts the container in a **background thread** with `PASSWORD=<token>`, and immediately renders `/conectar` with `aguardando=True`.
-7. If the container is already running with the same token in `sessoes.json`: portal renders `/conectar` with `aguardando=False` (autologin after 1.5 s).
-8. Client-side JavaScript polls `/aguardar` every 2 s until code-server responds. On success, auto-submits the login form to `/code/alunoXX/login` with the token.
-9. code-server authenticates → student lands in their workspace.
+7. If the container is already running with the same token in `sessoes.json`: portal renders `/conectar` with `aguardando=False` (buttons enabled after 1.5 s).
+8. Client-side JavaScript polls `/aguardar` every 2 s until code-server responds. On success, enables the "Abrir VS Code" and "Abrir Monitor" buttons.
+9. Student clicks "Abrir VS Code" → auto-submit form opens `/code/alunoXX/login` in a new tab → code-server authenticates → student lands in workspace.
+10. Optionally, student clicks "Abrir Monitor" → noVNC virtual display opens in a new tab at `/screen/alunoXX/`.
+11. The `/conectar` hub page remains open, maintaining the heartbeat and ping.
 
 ## Data Flow: Idle Cleanup
 

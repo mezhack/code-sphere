@@ -77,14 +77,14 @@ Common errors and fixes:
 The workspace directory has wrong ownership. Fix:
 
 ```bash
-sudo chown -R 911:1001 ~/sala-de-aula/alunos/
+sudo chown -R 911:1001 ~/code-sphere/alunos/
 docker restart sala_aluno01
 ```
 
 To fix all students at once:
 
 ```bash
-sudo chown -R 911:1001 ~/sala-de-aula/alunos/
+sudo chown -R 911:1001 ~/code-sphere/alunos/
 docker ps --format '{{.Names}}' | grep '^sala_aluno' | xargs -r docker restart
 ```
 
@@ -109,9 +109,9 @@ done
 
 ## Symptom: Student Sees "Welcome to code-server" Password Prompt
 
-**Likely cause:** a stale `config.yaml` in the student's volume has a password that doesn't match the token the portal generated.
+**Likely cause:** a stale `config.yaml` in the student's volume is interfering with startup, or the container was started outside the portal (e.g., directly via `docker start`) without the `PASSWORD` env var set.
 
-The `linuxserver/code-server` image creates `config.yaml` only on first run and ignores `PASSWORD` env var on subsequent starts. If the container was recreated with a new token but the old `config.yaml` wasn't deleted, code-server rejects the portal's autologin.
+The `linuxserver/code-server` image reads the `PASSWORD` environment variable injected at container creation via `with-contenv`; this takes priority over any value in `config.yaml`. If the container is recreated by the portal, the new `PASSWORD` is always authoritative. However, a stale `config.yaml` with a mismatched `bind-addr` can prevent code-server from binding to `0.0.0.0:8443`, making it unreachable even if the password is correct.
 
 The portal automatically deletes `config.yaml` before recreating a container. If the prompt still appears:
 
@@ -133,6 +133,75 @@ done
 ./iniciar.sh
 ```
 
+## Symptom: `/screen/alunoXX/` Shows a Blank Page or "Connection Failed"
+
+**Likely cause:** The virtual display stack (Xvfb → x11vnc → noVNC) inside the container didn't start, or websockify isn't running.
+
+Check whether the processes are running inside the student's container:
+
+```bash
+docker exec sala_aluno01 pgrep -a Xvfb
+docker exec sala_aluno01 pgrep -a x11vnc
+docker exec sala_aluno01 pgrep -a websockify
+```
+
+If any are missing, the `/custom-cont-init.d/tela` startup script didn't run. Check container logs:
+
+```bash
+docker logs sala_aluno01 --tail 30
+```
+
+The most common cause is the container running an **older image** (built before the display stack was added in v1.0.3). Rebuild and recreate:
+
+```bash
+docker build -f aluno.Dockerfile -t sala-aluno:latest .
+./parar.sh && ./iniciar.sh
+```
+
+After the student logs in again, the new container will start the display automatically.
+
+### noVNC page appears but says "noVNC ready. Waiting for host..."
+
+The WebSocket path is wrong — the noVNC `index.html` inside the container isn't computing the path correctly for the Traefik prefix.
+
+Verify the `index.html` was replaced:
+
+```bash
+docker exec sala_aluno01 cat /usr/share/novnc/index.html
+```
+
+It should contain a `<script>` that redirects to `vnc.html?autoconnect=true&path=...`. If it shows the original noVNC page instead, the image is outdated. Rebuild as above.
+
+## Symptom: `plt.show()` Prints "FigureCanvasAgg is non-interactive"
+
+**Cause:** matplotlib is using the `Agg` (non-GUI) backend instead of `TkAgg`. This means either:
+1. The container is running an older image without the `matplotlibrc` configuration.
+2. Something in the student's code or environment is overriding `MPLBACKEND`.
+
+Check inside the container:
+
+```bash
+docker exec sala_aluno01 cat /home/abc/.config/matplotlib/matplotlibrc
+# Should print: backend: TkAgg
+
+docker exec sala_aluno01 python3 -c "import matplotlib; print(matplotlib.get_backend())"
+# Should print: TkAgg
+```
+
+If the backend is wrong, rebuild the image (includes the `matplotlibrc` file):
+
+```bash
+docker build -f aluno.Dockerfile -t sala-aluno:latest .
+./parar.sh && ./iniciar.sh
+```
+
+If the backend is correct but `plt.show()` still doesn't show a window, check that Xvfb is running (see above) and that `DISPLAY=:1` is set:
+
+```bash
+docker exec sala_aluno01 echo $DISPLAY
+# Should print: :1
+```
+
 ## Symptom: Admin Panel Loads Forever
 
 **Likely cause:** the panel is making one Docker API call per student to check status. If many calls are slow, the panel hangs.
@@ -140,7 +209,7 @@ done
 This was fixed in version 1.0.0 by using a single filtered call. If the symptom recurs, you may have an older portal image. Rebuild:
 
 ```bash
-cd ~/sala-de-aula
+cd ~/code-sphere
 docker compose build portal
 docker compose up -d --force-recreate portal
 ```
@@ -156,7 +225,7 @@ docker logs sala_portal --tail 50
 Look for the traceback. Common causes:
 
 - **`BuildError: Could not build url for endpoint 'admin_painel'`** — there's a routing inconsistency, usually after a manual edit of `app.py`. Reset to the canonical version (re-extract from the release tarball or pull from git).
-- **`PermissionError: [Errno 13] Permission denied: '/data/alunos.json'`** — the `portal-data/` directory has wrong ownership. Fix: `sudo chown -R $USER:$USER ~/sala-de-aula/portal-data/`
+- **`PermissionError: [Errno 13] Permission denied: '/data/alunos.json'`** — the `portal-data/` directory has wrong ownership. Fix: `sudo chown -R $USER:$USER ~/code-sphere/portal-data/`
 - **`docker.errors.DockerException: Error while fetching server API version`** — the portal can't reach the Docker socket. Check that `docker-compose.yml` mounts `/var/run/docker.sock` for the portal service.
 
 ## Symptom: Cloudflare Tunnel URL Not Showing
@@ -224,7 +293,7 @@ docker ps --format '{{.Names}}' | grep '^sala_aluno' | xargs -r docker stop
 echo "=== Containers ===" && docker ps -a --format 'table {{.Names}}\t{{.Status}}\t{{.Image}}' && \
 echo "=== Resources ===" && free -h && \
 echo "=== Disk ===" && df -h ~ && \
-echo "=== Active sessions ===" && cat ~/sala-de-aula/portal-data/sessoes.json 2>/dev/null | head -20
+echo "=== Active sessions ===" && cat ~/code-sphere/portal-data/sessoes.json 2>/dev/null | head -20
 ```
 
 ### Check Specific Student's State
@@ -234,8 +303,8 @@ ALUNO=aluno15
 
 echo "=== Container ===" && docker ps -a --filter "name=sala_$ALUNO"
 echo "=== Logs ===" && docker logs "sala_$ALUNO" --tail 20
-echo "=== Workspace ownership ===" && ls -la ~/sala-de-aula/alunos/$ALUNO/
-echo "=== In session? ===" && grep -c "$ALUNO" ~/sala-de-aula/portal-data/sessoes.json 2>/dev/null
+echo "=== Workspace ownership ===" && ls -la ~/code-sphere/alunos/$ALUNO/
+echo "=== In session? ===" && grep -c "$ALUNO" ~/code-sphere/portal-data/sessoes.json 2>/dev/null
 ```
 
 ## When in Doubt: Nuclear Option
@@ -257,5 +326,5 @@ This stops everything, removes all containers (data is preserved in `./alunos/` 
 If none of this helps:
 
 1. Capture diagnostics: `docker ps -a > issue.txt && docker logs sala_portal --tail 100 >> issue.txt 2>&1`
-2. Note your version: `cat ~/sala-de-aula/portal/version.json`
+2. Note your version: `cat ~/code-sphere/portal/version.json`
 3. Open an issue on GitHub with the output and steps to reproduce.

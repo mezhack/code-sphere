@@ -1,7 +1,20 @@
 {
-  "version": "1.0.2",
-  "release_date": "2026-05-11",
+  "version": "1.0.3",
+  "release_date": "2026-05-19",
   "changelog": {
+    "1.0.3": {
+      "date": "2026-05-19",
+      "changes": [
+        "Display virtual: matplotlib e pygame agora abrem janelas reais visíveis no navegador",
+        "Xvfb + x11vnc + noVNC instalados na imagem do aluno — display virtual em :1",
+        "Backend TkAgg configurado via matplotlibrc — plt.show() funciona sem configuração extra",
+        "Rota /screen/alunoXX/ adicionada ao Traefik para acesso ao monitor virtual de cada aluno",
+        "Tela conectar.html redesenhada: permanece aberta como hub com botões 'Abrir VS Code' e 'Abrir Monitor'",
+        "Botões VS Code e Monitor ficam desabilitados durante o carregamento e habilitam quando o ambiente está pronto",
+        "Fix: python3-pil.imagetk adicionado à imagem para suporte ao TkAgg no ambiente linuxserver",
+        "Fix: noVNC index.html redireciona com path dinâmico para WebSocket funcionar atrás do Traefik"
+      ]
+    },
     "1.0.2": {
       "date": "2026-05-11",
       "changes": [

@@ -17,8 +17,8 @@ The system is designed for a single classroom server. Multiple servers or distri
 ### 1. Get the Code
 
 ```bash
-git clone https://github.com/<your-fork>/sala-de-aula-docker.git
-cd sala-de-aula-docker
+git clone https://github.com/<your-fork>/code-sphere.git
+cd code-sphere
 ```
 
 ### 2. Make Setup Executable
@@ -66,7 +66,12 @@ After setup, the script prints something like:
 Test by:
 1. Visiting `/admin` and logging in with the admin password you set.
 2. Creating a test login: visit `/`, log in as `aluno01` with the initial password, change the password when prompted.
-3. Confirming VS Code opens. In the integrated terminal, run `python3 --version` — should print Python 3.12.x.
+3. On the `/conectar` hub page, wait for the buttons to enable, then click "Abrir VS Code". In the integrated terminal, run `python3 --version` — should print Python 3.x.
+4. Click "Abrir Monitor". The noVNC virtual display should open. In the VS Code terminal, run:
+   ```python
+   import matplotlib.pyplot as plt; plt.plot([1,2,3]); plt.show()
+   ```
+   The graph should appear in the Monitor tab.
 
 ## Optional: Enable HTTPS via Cloudflare Tunnel
 
@@ -100,7 +105,7 @@ The system is now running. See [Daily Usage](./daily-usage.md) for typical opera
 After installation, the project directory contains:
 
 ```
-sala-de-aula-docker/
+code-sphere/
 ├── config.env              ← your configuration (edit cautiously)
 ├── docker-compose.yml      ← generated, do not edit by hand
 ├── alunos/                 ← student workspaces (preserved across restarts)

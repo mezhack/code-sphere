@@ -24,7 +24,7 @@ This guide covers updating an existing installation to a newer version of the pl
 ### Standard Upgrade (Minor or Patch Version)
 
 ```bash
-cd ~/sala-de-aula
+cd ~/code-sphere
 
 # 1. Stop the platform
 ./parar.sh
@@ -33,7 +33,7 @@ cd ~/sala-de-aula
 git pull
 
 # OR extract from a release tarball:
-# tar -xzf sala-de-aula-vX.Y.Z.tar.gz --strip-components=1
+# tar -xzf code-sphere-vX.Y.Z.tar.gz --strip-components=1
 
 # 3. Re-generate config files
 ./gerar.sh
@@ -70,9 +70,13 @@ docker ps | grep -E 'traefik|portal'
 # Visit /admin and log in.
 # Visit / and log in as a test student.
 
-# 4. Confirm Python still works in student containers
+# 4. Confirm Python and display stack work in student containers
 docker exec sala_aluno01 python3 --version
 docker exec sala_aluno01 python3 -c "import pygame; print('pygame ok')"
+docker exec sala_aluno01 python3 -c "import matplotlib; print(matplotlib.get_backend())"
+# Should print: TkAgg
+docker exec sala_aluno01 pgrep -a Xvfb
+# Should print the Xvfb process line
 ```
 
 ## Rolling Back
@@ -80,7 +84,7 @@ docker exec sala_aluno01 python3 -c "import pygame; print('pygame ok')"
 If the upgrade caused problems:
 
 ```bash
-cd ~/sala-de-aula
+cd ~/code-sphere
 
 # 1. Stop everything
 ./parar.sh

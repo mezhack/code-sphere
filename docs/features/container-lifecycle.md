@@ -2,7 +2,7 @@
 
 **Status:** Implemented
 **Owner:** Project lead
-**Last Updated:** 2026-05-11
+**Last Updated:** 2026-05-19
 
 ## Context
 
@@ -26,7 +26,7 @@ This is the opposite of what the original documentation stated. The `_senha_conf
 2. Portal checks: container `sala_alunoXX` is `running`.
 3. Portal reads the `PASSWORD` value from the container's config (original env at creation time).
 4. If it matches the current session token: reuse the token, return `/conectar` with `aguardando=False`.
-5. Client auto-submits the login form after 1.5 s. Done.
+5. After 1.5 s the "Abrir VS Code" and "Abrir Monitor" buttons are enabled. Student clicks to open the workspace or virtual display in a new tab.
 
 #### Path B — container already running but with a different token (pre-warmed)
 
@@ -41,7 +41,7 @@ This is the normal case after `./preaquecer.sh` has been run.
    d. Both exec calls check exit code; any non-zero exit triggers fallback to Path C.
 4. Portal returns `/conectar` with `aguardando=True` and returns the response immediately.
 5. In background, `aguardar_code_server` polls until code-server responds (~1–2 seconds).
-6. Client JS polls `/aguardar` every 2 s; on success, auto-submits the login form.
+6. Client JS polls `/aguardar` every 2 s; on success, enables the "Abrir VS Code" and "Abrir Monitor" buttons.
 
 #### Path C — container not running, or fast restart failed (fallback)
 
@@ -57,7 +57,7 @@ This is the normal case after `./preaquecer.sh` has been run.
    e. Remove the container; create and start a new one with the updated env.
 6. Client JS polls `/aguardar` every 2 s. The portal checks if `http://sala_alunoXX:8443/` responds with HTTP 200 or 302.
 7. When code-server is ready, `/aguardar` returns `{ok: true}`.
-8. Client auto-submits the login form with the token. Student lands in workspace.
+8. Client enables the "Abrir VS Code" and "Abrir Monitor" buttons. Student clicks to open the workspace or virtual display in a new tab.
 
 #### Why config.yaml is deleted before container recreation
 
