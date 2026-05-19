@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% block titulo %}Conectando...{% endblock %}
+{% block titulo %}Meu Ambiente{% endblock %}
 {% block conteudo %}
   <h1>Bem-vindo(a), {{ aluno }}!</h1>
 
@@ -21,14 +21,23 @@
     <a href="/conectar">tente novamente</a>.
   </p>
 
-  <hr style="margin:28px 0;border:none;border-top:1px solid #eee">
-  <p style="text-align:center">
-    <a href="{{ url_for('trocar_senha') }}" class="btn" style="background:#6b7280">Trocar senha</a>
-    <a href="{{ url_for('logout') }}" class="btn" style="background:#c0392b">Sair</a>
+  <hr style="margin:24px 0;border:none;border-top:1px solid #eee">
+
+  <p style="text-align:center;display:flex;gap:10px;justify-content:center;flex-wrap:wrap">
+    <button id="btn-vscode" onclick="abrirVSCode()" class="btn" disabled
+      style="opacity:.4;cursor:not-allowed">
+      💻 Abrir VS Code
+    </button>
+    <button id="btn-monitor" onclick="abrirMonitor()" class="btn" disabled
+      style="background:#2563eb;opacity:.4;cursor:not-allowed">
+      🖥️ Abrir Monitor
+    </button>
+    <a href="{{ url_for('trocar_senha') }}" class="btn" style="background:#6b7280">🔑 Trocar senha</a>
+    <a href="{{ url_for('logout') }}" class="btn" style="background:#c0392b">🚪 Sair</a>
   </p>
 
-  <!-- Form de autologin — submetido pelo JS quando o ambiente estiver pronto -->
-  <form id="autologin" method="post" action="{{ url_destino }}login" style="display:none">
+  <!-- Form de autologin — submetido pelo JS ao clicar "Abrir VS Code" -->
+  <form id="autologin" method="post" action="{{ url_destino }}login" target="_blank" style="display:none">
     <input type="hidden" name="password" value="{{ token }}">
     <input type="hidden" name="base" value="{{ url_destino.rstrip('/') }}">
   </form>
@@ -42,10 +51,12 @@
       "✅ Quase lá..."
     ];
     let step = 0;
-    const statusEl = document.getElementById("status");
-    const barraEl  = document.getElementById("barra");
-    const dicaEl   = document.getElementById("dica");
-    const erroEl   = document.getElementById("erro");
+    const statusEl   = document.getElementById("status");
+    const barraEl    = document.getElementById("barra");
+    const dicaEl     = document.getElementById("dica");
+    const erroEl     = document.getElementById("erro");
+    const btnVSCode  = document.getElementById("btn-vscode");
+    const btnMonitor = document.getElementById("btn-monitor");
 
     function avancarBarra() {
       if (step < STATUS_MSGS.length) {
@@ -57,17 +68,29 @@
     avancarBarra();
     const tick = setInterval(avancarBarra, 2500);
 
-    function abrirVSCode() {
+    function ambienteProto() {
       clearInterval(tick);
-      statusEl.textContent = "✅ Ambiente pronto! Abrindo VS Code...";
+      statusEl.textContent = "✅ Ambiente pronto!";
       barraEl.style.width = "100%";
-      setTimeout(() => document.getElementById("autologin").submit(), 800);
+      dicaEl.style.display = "none";
+      [btnVSCode, btnMonitor].forEach(b => {
+        b.disabled = false;
+        b.style.opacity = "1";
+        b.style.cursor = "pointer";
+      });
+    }
+
+    function abrirVSCode() {
+      document.getElementById("autologin").submit();
+    }
+
+    function abrirMonitor() {
+      window.open("/screen/{{ aluno }}/", "_blank");
     }
 
     {% if aguardando %}
-    // Container sendo iniciado em background — aguardar via polling
     let tentativas = 0;
-    const MAX_TENTATIVAS = 45; // 45 × 2s = 90 segundos
+    const MAX_TENTATIVAS = 45;
     setTimeout(() => dicaEl.style.display = "block", 20000);
     const poll = setInterval(async () => {
       tentativas++;
@@ -82,21 +105,20 @@
       try {
         const r = await fetch("/aguardar", { credentials: "same-origin" });
         const d = await r.json();
-        if (d.ok) { clearInterval(poll); abrirVSCode(); }
+        if (d.ok) { clearInterval(poll); ambienteProto(); }
         else if (d.redirect) { window.location.href = d.redirect; }
       } catch(e) {}
     }, 2000);
     {% else %}
-    // Servidor confirmou que o ambiente já está pronto
-    setTimeout(abrirVSCode, 1500);
+    setTimeout(ambienteProto, 1500);
     {% endif %}
 
-    // Heartbeat: mantém sessão viva
+    // Heartbeat: mantém sessão viva enquanto a página estiver aberta
     setInterval(() => {
       fetch("{{ url_for('heartbeat') }}", { method: "POST" }).catch(() => {});
     }, 60000);
 
-    // Ping: detecta se container caiu e reconecta
+    // Ping: detecta se container caiu e atualiza status
     setInterval(async () => {
       try {
         const r = await fetch("/ping", { credentials: "same-origin" });

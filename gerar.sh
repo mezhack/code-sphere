@@ -52,6 +52,11 @@ for i in $(seq 1 "$QUANTIDADE_ALUNOS"); do
       loadBalancer:
         servers:
           - url: "http://sala_${nome}:8443"
+
+    ${nome}-screen-svc:
+      loadBalancer:
+        servers:
+          - url: "http://sala_${nome}:6080"
 SVC
 done
 
@@ -68,6 +73,11 @@ for i in $(seq 1 "$QUANTIDADE_ALUNOS"); do
       stripPrefix:
         prefixes:
           - "/code/${nome}"
+
+    strip-screen-${nome}:
+      stripPrefix:
+        prefixes:
+          - "/screen/${nome}"
 MW
 done
 
@@ -96,6 +106,15 @@ for i in $(seq 1 "$QUANTIDADE_ALUNOS"); do
       middlewares:
         - strip-${nome}
       service: ${nome}-svc
+
+    ${nome}-screen-router:
+      rule: "PathPrefix(\`/screen/${nome}\`)"
+      entryPoints:
+        - web
+      priority: 100
+      middlewares:
+        - strip-screen-${nome}
+      service: ${nome}-screen-svc
 ROUTER
 done
 
