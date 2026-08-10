@@ -31,15 +31,17 @@ The system is designed around three constraints that drive every architectural d
                     │  Routes /           → portal
                     │  Routes /code/X/    → studentX VS Code
                     │  Routes /screen/X/  → studentX noVNC
+                    │  Routes /audio/X/   → studentX audio
                     └─────┬──────────────┬────┘
                           │              │
                 ┌─────────▼────┐    ┌────▼─────────────────┐
                 │ Portal (Flask)│    │ Student Container      │
                 │ - Auth        │    │ - code-server (8443)  │
-                │ - Sessions    │    │ - Python+Pygame       │
+                │ - Sessions    │    │ - Python+Pygame Zero  │
                 │ - Container   │    │ - Xvfb+x11vnc+noVNC  │
-                │   lifecycle   │    │ - PostgreSQL          │
-                └─────────┬─────┘    │ - Persistent vol      │
+                │   lifecycle   │    │ - PulseAudio (6081)   │
+                └─────────┬─────┘    │ - PostgreSQL          │
+                          │          │ - Persistent vol      │
                           │          └────────────────────────┘
                           │
                           │
@@ -65,8 +67,10 @@ Key paths:
 - `/changelog`, `/about`, `/static` → Portal (public, no login required)
 - `/code/aluno01/` → Student 01's code-server (port 8443)
 - `/screen/aluno01/` → Student 01's noVNC virtual display (port 6080)
+- `/audio/aluno01/` → Student 01's audio stream, raw PCM over WebSocket (port 6081)
 - `/code/aluno02/` → Student 02's code-server (port 8443)
 - `/screen/aluno02/` → Student 02's noVNC virtual display (port 6080)
+- `/audio/aluno02/` → Student 02's audio stream (port 6081)
 - (and so on for all configured students)
 
 ### Portal (Flask + Gunicorn)
@@ -87,7 +91,11 @@ Each student gets one container based on a custom image extending `linuxserver/c
 
 The virtual display runs on `:1` (Xvfb, 1280x720) inside each container and is exposed via noVNC on port 6080. When a student runs a Pygame Zero game or any pygame window, the graphical output appears on the virtual display and is accessible in the browser at `/screen/alunoXX/`. Keyboard and mouse travel the other way: noVNC sends them to x11vnc, which injects them via XTEST, so games are fully interactive in the browser tab.
 
-There is no window manager on the virtual display. Without one, SDL opens the window at `+590+310`, which pushes most of an 800x600 game off the 1280x720 screen. The image sets `SDL_VIDEO_CENTERED=1` so the window is centered and fully visible instead. The image also sets `SDL_AUDIODRIVER=dummy` — the container has no sound card, and without the dummy driver `pygame.mixer` floods the student's terminal with ALSA errors. Sound calls become silent no-ops; VNC carries no audio, so sound could not reach the student anyway.
+There is no window manager on the virtual display. Without one, SDL opens the window at `+590+310`, which pushes most of an 800x600 game off the 1280x720 screen. The image sets `SDL_VIDEO_CENTERED=1` so the window is centered and fully visible instead.
+
+Audio travels on a second channel, because RFB (the VNC protocol) has no audio and noVNC implements none. Inside the container PulseAudio runs with a null sink — there is no sound card — and publishes that sink's monitor as raw PCM (s16le, mono, 22050 Hz) on `127.0.0.1:4713`. A second `websockify` bridges it to port 6081, Traefik exposes it at `/audio/alunoXX/`, and `audio.js` (injected into noVNC's `vnc.html`) plays it through the Web Audio API. Browser autoplay rules mean the student presses "Ativar som" once per tab.
+
+`SDL_AUDIODRIVER` is `pulse,dummy` — deliberately a list. If PulseAudio is not running, `pulse` fails and SDL falls back to the mute driver, so the game keeps running silently instead of crashing on `sounds.foo.play()`. See [ADR-0011](./decisions/0011-audio-pcm-cru-via-websockify.md).
 
 matplotlib is deliberately **not** installed — see [ADR-0010](./decisions/0010-pygame-zero-sem-window-manager.md). `python3-tk` (tkinter) remains available.
 

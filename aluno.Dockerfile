@@ -27,6 +27,9 @@ RUN sed -i 's|http://archive.ubuntu.com|https://archive.ubuntu.com|g; s|http://s
     x11vnc \
     novnc \
     python3-tk \
+    # Áudio do monitor (sink virtual — o container não tem placa de som)
+    pulseaudio \
+    pulseaudio-utils \
     # Utilitários úteis
     git \
     curl \
@@ -52,12 +55,30 @@ RUN pip3 install --no-cache-dir --break-system-packages \
 # Display virtual: script de inicialização (custom-cont-init.d é o único diretório
 # que o linuxserver/code-server realmente executa na subida do container)
 RUN mkdir -p /custom-cont-init.d && \
-    printf '#!/usr/bin/with-contenv bash\n\
-Xvfb :1 -screen 0 1280x720x24 -nolisten tcp &\n\
-sleep 2\n\
-x11vnc -display :1 -nopw -listen 127.0.0.1 -rfbport 5900 -forever -shared -bg\n\
-sleep 1\n\
-nohup websockify --web=/usr/share/novnc/ 6080 127.0.0.1:5900 >/tmp/novnc.log 2>&1 &\n' \
+    printf '%s\n' \
+    '#!/usr/bin/with-contenv bash' \
+    'Xvfb :1 -screen 0 1280x720x24 -nolisten tcp &' \
+    'sleep 2' \
+    'x11vnc -display :1 -nopw -listen 127.0.0.1 -rfbport 5900 -forever -shared -bg' \
+    'sleep 1' \
+    'nohup websockify --web=/usr/share/novnc/ 6080 127.0.0.1:5900 >/tmp/novnc.log 2>&1 &' \
+    '' \
+    '# Áudio: o PulseAudio recusa rodar como root. Este script roda como abc nas' \
+    '# imagens atuais do linuxserver, mas já rodou como root — trata os dois casos.' \
+    '# auth-anonymous evita depender do cookie, que fica no HOME do daemon.' \
+    'mkdir -p /tmp/pulse' \
+    'COMO_ABC=""' \
+    'if [ "$(id -u)" = "0" ]; then' \
+    '  chown abc:abc /tmp/pulse' \
+    '  COMO_ABC="s6-setuidgid abc"' \
+    'fi' \
+    '$COMO_ABC env HOME=/tmp/pulse PULSE_RUNTIME_PATH=/tmp/pulse pulseaudio -n \' \
+    '  --load="module-null-sink sink_name=virtual" \' \
+    '  --load="module-native-protocol-unix socket=/tmp/pulse/native auth-anonymous=1" \' \
+    '  --load="module-simple-protocol-tcp source=virtual.monitor record=true listen=127.0.0.1 port=4713 format=s16le rate=22050 channels=1" \' \
+    '  --exit-idle-time=-1 --disallow-exit --daemonize=yes >/tmp/pulse.log 2>&1' \
+    'sleep 1' \
+    'nohup websockify 6081 127.0.0.1:4713 >/tmp/audio.log 2>&1 &' \
     > /custom-cont-init.d/tela && chmod +x /custom-cont-init.d/tela
 
 # Página inicial do noVNC redireciona para vnc.html com auto-connect e path correto
@@ -66,6 +87,12 @@ var p = window.location.pathname.replace(/\\/+$/, "");\n\
 window.location.replace("vnc.html?autoconnect=true&path=" + p.slice(1) + "/websockify");\n\
 </script>\n' > /usr/share/novnc/index.html
 
+# Player de áudio: injetado no vnc.html do próprio noVNC em vez de embrulhar a
+# página num iframe, que quebraria o encaminhamento de teclado para o jogo.
+COPY novnc-defaults/audio.js /usr/share/novnc/audio.js
+RUN sed -i 's#</body>#<script src="audio.js"></script>\n</body>#' /usr/share/novnc/vnc.html && \
+    grep -q 'audio.js' /usr/share/novnc/vnc.html
+
 # DISPLAY aponta para o Xvfb
 ENV DISPLAY=:1
 
@@ -73,9 +100,14 @@ ENV DISPLAY=:1
 # na tela de 1280x720 — centralizar mantém o jogo inteiro visível no monitor
 ENV SDL_VIDEO_CENTERED=1
 
-# Não há placa de som no container: sem o driver dummy o pygame.mixer despeja
-# erros de ALSA no terminal do aluno a cada execução
-ENV SDL_AUDIODRIVER=dummy
+# O som do jogo vai para o sink virtual do PulseAudio, de onde é transmitido ao
+# navegador. A lista com dummy no fim é proposital: se o PulseAudio não subir,
+# o SDL cai no driver mudo e o jogo continua rodando. Com "pulse" sozinho o
+# sounds.play() levanta exceção e mata o jogo do aluno; deixar a variável vazia
+# faria o SDL tentar o ALSA, que não existe aqui e também falha, com o terminal
+# cheio de erro.
+ENV SDL_AUDIODRIVER=pulse,dummy
+ENV PULSE_SERVER=unix:/tmp/pulse/native
 
 # Volta para o usuário padrão do linuxserver
 USER abc

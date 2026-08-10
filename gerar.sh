@@ -57,6 +57,11 @@ for i in $(seq 1 "$QUANTIDADE_ALUNOS"); do
       loadBalancer:
         servers:
           - url: "http://sala_${nome}:6080"
+
+    ${nome}-audio-svc:
+      loadBalancer:
+        servers:
+          - url: "http://sala_${nome}:6081"
 SVC
 done
 
@@ -78,6 +83,11 @@ for i in $(seq 1 "$QUANTIDADE_ALUNOS"); do
       stripPrefix:
         prefixes:
           - "/screen/${nome}"
+
+    strip-audio-${nome}:
+      stripPrefix:
+        prefixes:
+          - "/audio/${nome}"
 MW
 done
 
@@ -115,6 +125,15 @@ for i in $(seq 1 "$QUANTIDADE_ALUNOS"); do
       middlewares:
         - strip-screen-${nome}
       service: ${nome}-screen-svc
+
+    ${nome}-audio-router:
+      rule: "PathPrefix(\`/audio/${nome}\`)"
+      entryPoints:
+        - web
+      priority: 100
+      middlewares:
+        - strip-audio-${nome}
+      service: ${nome}-audio-svc
 ROUTER
 done
 

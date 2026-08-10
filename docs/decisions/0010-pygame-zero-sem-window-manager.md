@@ -59,6 +59,8 @@ Two other findings came out of the same testing:
 
 **Audio is unavailable, not merely silenced.** `sounds.foo.play()` runs without error and produces nothing. This is inherent to the monitor — VNC carries no audio — and is not something the dummy driver caused. A class built around sound effects will not work on this platform.
 
+> **Superseded on this point by [ADR-0011](./0011-audio-pcm-cru-via-websockify.md) (v1.0.5).** The conclusion above was right about VNC and wrong about the platform: audio now travels on a second channel alongside the video, and `SDL_AUDIODRIVER` became `pulse,dummy` rather than `dummy`.
+
 **No window decorations.** With no window manager there is no title bar, and windows cannot be moved or resized. For a single fullscreen-ish game window this is invisible to the student.
 
 ## References

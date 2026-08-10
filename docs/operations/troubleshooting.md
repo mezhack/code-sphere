@@ -195,18 +195,56 @@ See [ADR-0010](../decisions/0010-pygame-zero-sem-window-manager.md) for why cent
 
 ## Symptom: The Student's Terminal Fills With `ALSA lib ...` Errors
 
-**Cause:** the container has no sound card, and `pygame.mixer` is falling back to ALSA. The errors are noisy but harmless — the game still runs.
-
-The image sets `SDL_AUDIODRIVER=dummy` to suppress this. Verify:
+**Cause:** the container has no sound card, and `pygame.mixer` fell through to ALSA. This means `SDL_AUDIODRIVER` is empty or wrong — with the correct value SDL never reaches ALSA.
 
 ```bash
 docker exec sala_aluno01 printenv SDL_AUDIODRIVER
-# Should print: dummy
+# Should print: pulse,dummy
 ```
 
-If empty, the container predates v1.0.4 — rebuild as above.
+**The comma matters.** `pulse` alone makes `sounds.foo.play()` raise `UnsupportedFormat` and kill the student's game whenever PulseAudio is not running. An empty value makes SDL try ALSA, which fails here anyway after printing the errors. The list makes SDL fall back to the mute driver: no crash, no noise. See [ADR-0011](../decisions/0011-audio-pcm-cru-via-websockify.md).
 
-Note that this makes sound a silent no-op, not a working feature: `sounds.foo.play()` succeeds and produces nothing. VNC carries no audio, so sound cannot reach the student by any configuration.
+## Symptom: No Sound in the Monitor
+
+First, the student must click **"Ativar som"** in the monitor tab. Browsers refuse to start audio without a user gesture, so nothing plays before that click. The button turns green and reads "Som ligado" when the stream is connected.
+
+If the button never turns green, check the audio chain inside the container:
+
+```bash
+# 1. O PulseAudio subiu?
+docker exec sala_aluno01 pgrep -a pulseaudio
+
+# 2. O sink virtual existe?
+docker exec sala_aluno01 env PULSE_SERVER=unix:/tmp/pulse/native pactl list short sinks
+# Should print a line with: virtual  module-null-sink.c
+
+# 3. O stream TCP está publicado?
+docker exec sala_aluno01 env PULSE_SERVER=unix:/tmp/pulse/native pactl list short modules | grep simple-protocol
+
+# 4. A ponte WebSocket está de pé?
+docker exec sala_aluno01 pgrep -af "websockify 6081"
+
+# 5. O jogo está mesmo tocando algo? (aparece só enquanto há som)
+docker exec sala_aluno01 env PULSE_SERVER=unix:/tmp/pulse/native pactl list short sink-inputs
+```
+
+If step 1 fails, look at `/tmp/pulse.log` inside the container. PulseAudio refuses to run as root and needs a writable `HOME`; the startup script handles both, but a broken `/tmp/pulse` breaks it.
+
+If everything above is fine and there is still no sound, the problem is between Traefik and the browser. Confirm the route exists:
+
+```bash
+grep -A3 "aluno01-audio-router" traefik/dynamic/routes.yml
+```
+
+If it is missing, the routes were generated before v1.0.5 — run `./gerar.sh` and restart Traefik.
+
+## Symptom: Sound Is Delayed or Choppy
+
+The player keeps a jitter buffer: it waits until 150 ms of audio has arrived before starting, and discards the backlog when it exceeds 500 ms. A slow or saturated network makes it underrun (brief silences) or discard (skips).
+
+Audio is 353 kbps per student on top of the VNC video. With 30 students that is roughly 10 Mbps of audio alone. If the classroom wifi is the bottleneck, halve it by lowering the rate in the startup script (`rate=22050` → `rate=11025` in the `module-simple-protocol-tcp` line of `aluno.Dockerfile`), then rebuild.
+
+Remember the audio path also competes for the same CPU quota as the game (~3.8% of a core).
 
 ## Symptom: The Game Runs but Feels Choppy
 

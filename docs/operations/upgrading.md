@@ -76,6 +76,9 @@ docker exec sala_aluno01 python3 -c "import pygame; print('pygame ok')"
 docker exec sala_aluno01 python3 -c "import pgzero; print('pgzero', pgzero.__version__)"
 # Should print: pgzero 1.2.1
 docker exec sala_aluno01 pgrep -a Xvfb
+docker exec sala_aluno01 pgrep -a pulseaudio
+# Should print the PulseAudio process line (audio do monitor)
+docker exec sala_aluno01 pgrep -af "websockify 6081"
 # Should print the Xvfb process line
 ```
 

@@ -78,6 +78,9 @@ Test by:
    ```
    Run it with `pgzrun jogo.py`. A centered window should appear in the Monitor tab.
    Press a key with the Monitor tab focused to confirm input reaches the game.
+5. Click **"Ativar som"** in the bottom-right of the Monitor tab. It should turn green
+   and read "Som ligado". To confirm audio end to end, drop a `.wav` in a `sounds/`
+   folder next to the script and call `sounds.<nome>.play()` from the game.
 
 ## Optional: Enable HTTPS via Cloudflare Tunnel
 

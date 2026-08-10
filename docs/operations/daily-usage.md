@@ -79,6 +79,8 @@ http://<server-ip>/screen/aluno01/
 
 Students open their own monitor by clicking **"Abrir Monitor"** on the `/conectar` hub page.
 
+Sound from the student's program plays in that same tab, but only after they click **"Ativar som"** in the bottom-right corner — browsers block audio until the user asks for it. Each student hears only their own container; there is no central audio for the class, so headphones are worth mentioning before a games lesson.
+
 ### Install Packages During Class
 
 Students can install packages themselves from the integrated terminal — no password needed:

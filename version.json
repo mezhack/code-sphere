@@ -1,7 +1,20 @@
 {
-  "version": "1.0.4",
+  "version": "1.0.5",
   "release_date": "2026-08-10",
   "changelog": {
+    "1.0.5": {
+      "date": "2026-08-10",
+      "changes": [
+        "Áudio no monitor: o som dos programas do aluno agora toca no navegador",
+        "PulseAudio com sink virtual publica PCM cru (s16le, mono, 22050 Hz) e o websockify — que já existia para o noVNC — faz a ponte para WebSocket",
+        "Rota /audio/alunoXX/ adicionada ao Traefik (porta 6081)",
+        "Player embutido na aba do monitor com botão 'Ativar som' (navegador exige gesto do usuário) e buffer de 150 ms",
+        "SDL_AUDIODRIVER passa a ser 'pulse,dummy': se o PulseAudio não subir, o jogo continua rodando mudo em vez de quebrar no sounds.play()",
+        "Sem gerenciador de janelas nem iframe: o player é injetado no vnc.html do próprio noVNC para não quebrar o teclado do jogo",
+        "ADR-0011 documenta a escolha de PCM cru sobre Opus/ffmpeg, KasmVNC e pygbag",
+        "Custo medido: +3,8% de CPU e +24 MB de RAM por aluno; imagem +136 MB; 353 kbps por aluno"
+      ]
+    },
     "1.0.4": {
       "date": "2026-08-10",
       "changes": [
