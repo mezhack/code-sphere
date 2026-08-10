@@ -37,7 +37,7 @@ echo "  Versão instalada: ${BOLD}v${VERSAO_ANTES}${RESET}"
 # Verifica se há atualizações
 titulo "Verificando atualizações..."
 git fetch origin main --quiet
-COMMITS_ATRAS=$(git rev-list HEAD..origin/main --count 2>/dev/null || echo "0")
+COMMITS_ATRAS=$(git rev-list HEAD..FETCH_HEAD --count 2>/dev/null || echo "0")
 
 if [ "$COMMITS_ATRAS" = "0" ]; then
     ok "Você já está na versão mais recente (v${VERSAO_ANTES})."
@@ -45,7 +45,7 @@ if [ "$COMMITS_ATRAS" = "0" ]; then
     exit 0
 fi
 
-VERSAO_REMOTA=$(git show origin/main:portal/version.json 2>/dev/null | python3 -c "import json,sys; print(json.load(sys.stdin)['version'])" 2>/dev/null || echo "nova")
+VERSAO_REMOTA=$(git show FETCH_HEAD:portal/version.json 2>/dev/null | python3 -c "import json,sys; print(json.load(sys.stdin)['version'])" 2>/dev/null || echo "nova")
 echo "  Nova versão disponível: ${BOLD}v${VERSAO_REMOTA}${RESET} (${COMMITS_ATRAS} commit(s) à frente)"
 echo ""
 read -rp "  Continuar com a atualização? [s/N] " confirma
@@ -58,6 +58,7 @@ ok "Sala parada."
 
 # ── 2. Puxa novo código ─────────────────────────────────────────────────────
 titulo "2/4 — Baixando atualização..."
+HEAD_ANTES=$(git rev-parse HEAD)
 git pull origin main
 VERSAO_DEPOIS=$(python3 -c "import json; print(json.load(open('portal/version.json'))['version'])" 2>/dev/null || echo "nova")
 ok "Código atualizado para v${VERSAO_DEPOIS}."
@@ -71,7 +72,7 @@ $DC build portal
 ok "Imagem do portal reconstruída."
 
 # Reconstrói imagem do aluno apenas se o Dockerfile mudou
-if git diff "v${VERSAO_ANTES}" HEAD -- aluno.Dockerfile 2>/dev/null | grep -q '^[+-]'; then
+if git diff "$HEAD_ANTES" HEAD -- aluno.Dockerfile | grep -q '^[+-]'; then
     echo "  aluno.Dockerfile foi alterado — reconstruindo imagem dos alunos..."
     docker build -f aluno.Dockerfile -t sala-aluno:latest .
     ok "Imagem dos alunos reconstruída."

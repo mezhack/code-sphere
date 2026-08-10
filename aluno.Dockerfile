@@ -4,7 +4,10 @@ FROM lscr.io/linuxserver/code-server:latest
 USER root
 
 # Dependências do sistema
-RUN apt-get update && apt-get install -y --no-install-recommends \
+# Repositórios em HTTPS: redes com filtro de conteúdo bloqueiam o apt em HTTP (403 Forbidden)
+RUN sed -i 's|http://archive.ubuntu.com|https://archive.ubuntu.com|g; s|http://security.ubuntu.com|https://security.ubuntu.com|g; s|http://ports.ubuntu.com|https://ports.ubuntu.com|g' \
+        /etc/apt/sources.list \
+    && apt-get update && apt-get install -y --no-install-recommends \
     # Python
     python3 \
     python3-pip \
