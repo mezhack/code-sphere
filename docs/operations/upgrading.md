@@ -73,8 +73,8 @@ docker ps | grep -E 'traefik|portal'
 # 4. Confirm Python and display stack work in student containers
 docker exec sala_aluno01 python3 --version
 docker exec sala_aluno01 python3 -c "import pygame; print('pygame ok')"
-docker exec sala_aluno01 python3 -c "import matplotlib; print(matplotlib.get_backend())"
-# Should print: TkAgg
+docker exec sala_aluno01 python3 -c "import pgzero; print('pgzero', pgzero.__version__)"
+# Should print: pgzero 1.2.1
 docker exec sala_aluno01 pgrep -a Xvfb
 # Should print the Xvfb process line
 ```

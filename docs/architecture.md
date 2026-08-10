@@ -83,9 +83,13 @@ The portal is the only component that talks to the Docker daemon. Student contai
 
 ### Student Containers (code-server)
 
-Each student gets one container based on a custom image extending `linuxserver/code-server`. The image adds Python 3, Pygame, matplotlib, PostgreSQL client, a virtual display stack (Xvfb + x11vnc + noVNC), pre-configured VS Code settings (autosave on, fixed font size), and passwordless `sudo` for the `abc` user.
+Each student gets one container based on a custom image extending `linuxserver/code-server`. The image adds Python 3, Pygame, Pygame Zero (`pgzero`), PostgreSQL client, a virtual display stack (Xvfb + x11vnc + noVNC), pre-configured VS Code settings (autosave on, fixed font size), and passwordless `sudo` for the `abc` user.
 
-The virtual display runs on `:1` (Xvfb) inside each container and is exposed via noVNC on port 6080. When a student runs `plt.show()` or any pygame window, the graphical output appears on the virtual display and is accessible in the browser at `/screen/alunoXX/`.
+The virtual display runs on `:1` (Xvfb, 1280x720) inside each container and is exposed via noVNC on port 6080. When a student runs a Pygame Zero game or any pygame window, the graphical output appears on the virtual display and is accessible in the browser at `/screen/alunoXX/`. Keyboard and mouse travel the other way: noVNC sends them to x11vnc, which injects them via XTEST, so games are fully interactive in the browser tab.
+
+There is no window manager on the virtual display. Without one, SDL opens the window at `+590+310`, which pushes most of an 800x600 game off the 1280x720 screen. The image sets `SDL_VIDEO_CENTERED=1` so the window is centered and fully visible instead. The image also sets `SDL_AUDIODRIVER=dummy` — the container has no sound card, and without the dummy driver `pygame.mixer` floods the student's terminal with ALSA errors. Sound calls become silent no-ops; VNC carries no audio, so sound could not reach the student anyway.
+
+matplotlib is deliberately **not** installed — see [ADR-0010](./decisions/0010-pygame-zero-sem-window-manager.md). `python3-tk` (tkinter) remains available.
 
 Students can install packages directly from the integrated terminal without a password:
 

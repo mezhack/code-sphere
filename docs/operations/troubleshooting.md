@@ -172,33 +172,83 @@ docker exec sala_aluno01 cat /usr/share/novnc/index.html
 
 It should contain a `<script>` that redirects to `vnc.html?autoconnect=true&path=...`. If it shows the original noVNC page instead, the image is outdated. Rebuild as above.
 
-## Symptom: `plt.show()` Prints "FigureCanvasAgg is non-interactive"
+## Symptom: The Pygame Zero Window Appears Cut Off in the Monitor
 
-**Cause:** matplotlib is using the `Agg` (non-GUI) backend instead of `TkAgg`. This means either:
-1. The container is running an older image without the `matplotlibrc` configuration.
-2. Something in the student's code or environment is overriding `MPLBACKEND`.
+**Cause:** the container is running an image built before v1.0.4. There is no window manager on the virtual display, so SDL places the window at `+590+310`; on a 1280x720 screen an 800x600 game runs off the bottom-right edge and the student sees only its top-left corner. Clicks aimed at the visible part fall outside the window and are ignored.
 
-Check inside the container:
+Check that the centering variable is present:
 
 ```bash
-docker exec sala_aluno01 cat /home/abc/.config/matplotlib/matplotlibrc
-# Should print: backend: TkAgg
-
-docker exec sala_aluno01 python3 -c "import matplotlib; print(matplotlib.get_backend())"
-# Should print: TkAgg
+docker exec sala_aluno01 printenv SDL_VIDEO_CENTERED
+# Should print: 1
 ```
 
-If the backend is wrong, rebuild the image (includes the `matplotlibrc` file):
+If it is empty, rebuild the image:
 
 ```bash
 docker build -f aluno.Dockerfile -t sala-aluno:latest .
-./parar.sh && ./iniciar.sh
 ```
 
-If the backend is correct but `plt.show()` still doesn't show a window, check that Xvfb is running (see above) and that `DISPLAY=:1` is set:
+The portal recreates each student container from the `sala-aluno:latest` tag on the next login, so students pick up the new image without any further step.
+
+See [ADR-0010](../decisions/0010-pygame-zero-sem-window-manager.md) for why centering was chosen over installing a window manager.
+
+## Symptom: The Student's Terminal Fills With `ALSA lib ...` Errors
+
+**Cause:** the container has no sound card, and `pygame.mixer` is falling back to ALSA. The errors are noisy but harmless — the game still runs.
+
+The image sets `SDL_AUDIODRIVER=dummy` to suppress this. Verify:
 
 ```bash
-docker exec sala_aluno01 echo $DISPLAY
+docker exec sala_aluno01 printenv SDL_AUDIODRIVER
+# Should print: dummy
+```
+
+If empty, the container predates v1.0.4 — rebuild as above.
+
+Note that this makes sound a silent no-op, not a working feature: `sounds.foo.play()` succeeds and produces nothing. VNC carries no audio, so sound cannot reach the student by any configuration.
+
+## Symptom: The Game Runs but Feels Choppy
+
+**Cause:** the per-student CPU cap. A Pygame Zero game saturates its quota — unlike ordinary Python exercises, it runs a redraw loop continuously.
+
+Measured on a 6-core/12-thread i7: ~16–23 FPS at `LIMITE_CPU=0.28`, ~39 FPS at `0.5`. The default is `0.5` since v1.0.4.
+
+To change it, edit `LIMITE_CPU` in `config.env` and regenerate. **The student containers must then be recreated** — `./iniciar.sh` only recreates `traefik` and `portal`, and the portal reuses the CPU limit stored in each existing container (`nano_cpus` is copied from the old `HostConfig` on recreate). Editing `config.env` alone changes nothing:
+
+```bash
+./gerar.sh
+./parar.sh
+for i in $(seq 1 60); do
+  docker rm -f "sala_$(printf 'aluno%02d' $i)" 2>/dev/null || true
+  docker compose create "$(printf 'aluno%02d' $i)" 2>/dev/null
+done
+./iniciar.sh
+```
+
+Student work in `alunos/alunoXX/workspace/` is on a bind mount and survives this.
+
+Note the limit is a ceiling, not a reservation: when the whole class runs games at once, the kernel time-shares and everyone lands below their cap regardless.
+
+## Symptom: `ModuleNotFoundError: No module named 'matplotlib'`
+
+**Not a fault.** matplotlib was removed from the student image in v1.0.4 — see [ADR-0010](../decisions/0010-pygame-zero-sem-window-manager.md). `python3-tk` (tkinter) is still available.
+
+To restore it for a class that needs plots, add `matplotlib` back to the `pip3 install` block in `aluno.Dockerfile`, and — because the display has no window manager — also restore the backend pin so `plt.show()` opens a real window:
+
+```dockerfile
+RUN mkdir -p /home/abc/.config/matplotlib && \
+    echo "backend: TkAgg" > /home/abc/.config/matplotlib/matplotlibrc
+```
+
+TkAgg additionally needs `python3-pil.imagetk` in the apt block. Then rebuild and recreate the containers.
+
+## Symptom: Graphical Program Shows Nothing at All
+
+Check that Xvfb is running (see the section above) and that `DISPLAY` is set:
+
+```bash
+docker exec sala_aluno01 printenv DISPLAY
 # Should print: :1
 ```
 

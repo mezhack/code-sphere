@@ -1,7 +1,22 @@
 {
-  "version": "1.0.3",
-  "release_date": "2026-05-19",
+  "version": "1.0.4",
+  "release_date": "2026-08-10",
   "changelog": {
+    "1.0.4": {
+      "date": "2026-08-10",
+      "changes": [
+        "Pygame Zero (pgzero) instalado na imagem do aluno — comando pgzrun disponível no terminal",
+        "Fix: janela do jogo era aberta em +590+310 e ficava cortada na tela de 1280x720 — SDL_VIDEO_CENTERED=1 centraliza e mantém o jogo inteiro visível no monitor",
+        "Fix: SDL_AUDIODRIVER=dummy elimina a enxurrada de erros de ALSA no terminal do aluno (o container não tem placa de som)",
+        "Monitor validado para jogos: teclado e mouse do navegador chegam ao jogo via noVNC → x11vnc → XTEST",
+        "Limite de CPU por aluno subiu de 0.28 para 0.5 — um jogo satura a cota e ficava travado em ~20 FPS",
+        "matplotlib removido da imagem (não será usado em aula), junto do matplotlibrc, do MPLBACKEND e do python3-pil.imagetk",
+        "tkinter (python3-tk) mantido — é independente do matplotlib",
+        "ADR-0010 documenta por que não há gerenciador de janelas no display virtual",
+        "Fix: repositórios apt em HTTPS nas imagens do aluno e do portal — redes com filtro de conteúdo bloqueiam o apt em HTTP (403)",
+        "Fix: atualizar.sh comparava com origin/main e com a tag da versão anterior, que podiam não existir — agora usa FETCH_HEAD e o HEAD anterior ao pull"
+      ]
+    },
     "1.0.3": {
       "date": "2026-05-19",
       "changes": [

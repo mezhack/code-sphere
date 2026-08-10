@@ -22,12 +22,11 @@ RUN sed -i 's|http://archive.ubuntu.com|https://archive.ubuntu.com|g; s|http://s
     # PostgreSQL client (psql + biblioteca Python)
     postgresql-client \
     libpq-dev \
-    # Display virtual (para matplotlib, pygame e outros programas gráficos)
+    # Display virtual (para pygame e outros programas gráficos)
     xvfb \
     x11vnc \
     novnc \
     python3-tk \
-    python3-pil.imagetk \
     # Utilitários úteis
     git \
     curl \
@@ -45,7 +44,7 @@ RUN ln -sf /usr/bin/python3 /usr/bin/python
 # Instala pacotes Python globais (acessíveis a todos os usuários)
 RUN pip3 install --no-cache-dir --break-system-packages \
     pygame \
-    matplotlib \
+    pgzero \
     psycopg2-binary \
     requests \
     ipython
@@ -61,10 +60,6 @@ sleep 1\n\
 nohup websockify --web=/usr/share/novnc/ 6080 127.0.0.1:5900 >/tmp/novnc.log 2>&1 &\n' \
     > /custom-cont-init.d/tela && chmod +x /custom-cont-init.d/tela
 
-# Força backend TkAgg via arquivo de configuração do matplotlib (independe de env vars)
-RUN mkdir -p /home/abc/.config/matplotlib && \
-    echo "backend: TkAgg" > /home/abc/.config/matplotlib/matplotlibrc
-
 # Página inicial do noVNC redireciona para vnc.html com auto-connect e path correto
 RUN printf '<script>\n\
 var p = window.location.pathname.replace(/\\/+$/, "");\n\
@@ -73,7 +68,14 @@ window.location.replace("vnc.html?autoconnect=true&path=" + p.slice(1) + "/webso
 
 # DISPLAY aponta para o Xvfb
 ENV DISPLAY=:1
-ENV MPLBACKEND=TkAgg
+
+# Sem gerenciador de janelas o SDL abre a janela em +590+310 e ela fica cortada
+# na tela de 1280x720 — centralizar mantém o jogo inteiro visível no monitor
+ENV SDL_VIDEO_CENTERED=1
+
+# Não há placa de som no container: sem o driver dummy o pygame.mixer despeja
+# erros de ALSA no terminal do aluno a cada execução
+ENV SDL_AUDIODRIVER=dummy
 
 # Volta para o usuário padrão do linuxserver
 USER abc

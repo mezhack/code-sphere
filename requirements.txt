@@ -3,5 +3,4 @@
 
 requests
 
-# Quando for usar jogos, descomente:
-# pygame
+# pygame e pgzero (Pygame Zero) já vêm na imagem do aluno — não precisa listar aqui.

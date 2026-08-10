@@ -71,7 +71,7 @@ The container restarts in the background; auto-reconnect picks it up automatical
 
 ### View a Student's Virtual Display
 
-Each student has a virtual graphical display accessible at `/screen/alunoXX/`. When a student runs `plt.show()` or any pygame window, the output appears there. You can view it from the admin panel (future) or directly:
+Each student has a virtual graphical display accessible at `/screen/alunoXX/`. When a student runs a Pygame Zero game or any pygame window, the output appears there — and keyboard/mouse from that browser tab reach the game. You can view it from the admin panel (future) or directly:
 
 ```
 http://<server-ip>/screen/aluno01/
@@ -84,7 +84,7 @@ Students open their own monitor by clicking **"Abrir Monitor"** on the `/conecta
 Students can install packages themselves from the integrated terminal — no password needed:
 
 ```bash
-# Instalar biblioteca Python (matplotlib, pygame, psycopg2 já vêm pré-instalados)
+# Instalar biblioteca Python (pygame, pgzero, psycopg2 já vêm pré-instalados)
 pip install pandas
 
 # Instalar pacote do sistema
@@ -97,7 +97,7 @@ sudo apt install <package>
 # In aluno.Dockerfile, add the package to the pip3 install block:
 RUN pip3 install --no-cache-dir --break-system-packages \
     pygame \
-    matplotlib \
+    pgzero \
     pandas \    # ← add here
     ...
 

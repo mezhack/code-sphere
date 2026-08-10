@@ -52,6 +52,8 @@ Links to related discussions, ADRs, or external resources.
 | [0006](./0006-argon2-passwords.md) | Argon2 for password hashing | Accepted |
 | [0007](./0007-puid-pgid-911.md) | PUID/PGID 911:1001 for student volumes | Accepted |
 | [0008](./0008-version-check-github.md) | GitHub Releases API for update checking | Accepted |
+| [0009](./0009-fast-restart-s6.md) | Fast restart via s6-svc for pre-warmed containers | Accepted |
+| [0010](./0010-pygame-zero-sem-window-manager.md) | Pygame Zero on the virtual display without a window manager | Accepted |
 
 ## Adding a New ADR
 

@@ -67,11 +67,17 @@ Test by:
 1. Visiting `/admin` and logging in with the admin password you set.
 2. Creating a test login: visit `/`, log in as `aluno01` with the initial password, change the password when prompted.
 3. On the `/conectar` hub page, wait for the buttons to enable, then click "Abrir VS Code". In the integrated terminal, run `python3 --version` — should print Python 3.x.
-4. Click "Abrir Monitor". The noVNC virtual display should open. In the VS Code terminal, run:
+4. Click "Abrir Monitor". The noVNC virtual display should open. In the VS Code terminal, create `jogo.py`:
    ```python
-   import matplotlib.pyplot as plt; plt.plot([1,2,3]); plt.show()
+   import pgzrun
+   WIDTH, HEIGHT = 800, 600
+   def draw():
+       screen.fill((20, 20, 60))
+       screen.draw.text("Funcionou!", (280, 280), fontsize=60, color="white")
+   pgzrun.go()
    ```
-   The graph should appear in the Monitor tab.
+   Run it with `pgzrun jogo.py`. A centered window should appear in the Monitor tab.
+   Press a key with the Monitor tab focused to confirm input reaches the game.
 
 ## Optional: Enable HTTPS via Cloudflare Tunnel
 

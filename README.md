@@ -194,10 +194,10 @@ Para resetar só a senha (o comum), use o painel admin em `/admin`.
 
 ### Instalar biblioteca Python em todos os ambientes
 
-Quando Pygame entrar no plano de aula, ou qualquer outra lib:
+`pygame` e `pgzero` (Pygame Zero) já vêm na imagem do aluno. Para qualquer outra lib:
 
 ```bash
-./instalar_pacotes.sh pygame
+./instalar_pacotes.sh pandas
 ```
 
 Ou edite `requirements.txt` e rode `./instalar_pacotes.sh` sem argumentos.
