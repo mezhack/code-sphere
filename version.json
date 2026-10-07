@@ -1,7 +1,16 @@
 {
-  "version": "1.0.5",
-  "release_date": "2026-08-10",
+  "version": "1.0.6",
+  "release_date": "2026-10-07",
   "changelog": {
+    "1.0.6": {
+      "date": "2026-10-07",
+      "changes": [
+        "Fix: o som do monitor não tocava nos Chromebooks — o player usava AudioWorklet, que o Chrome só libera em HTTPS ou localhost, e a sala é acessada por http://IP-DO-SERVIDOR/ (o botão ficava em 'Som indisponível')",
+        "Player reescrito com AudioBuffers agendados no relógio do AudioContext: funciona em HTTP, mesma latência (buffer de 150 ms, descarte acima de 500 ms)",
+        "atualizar.sh passa a reconstruir a imagem dos alunos quando novnc-defaults/ muda (antes só olhava o aluno.Dockerfile, e uma correção no audio.js nunca chegava aos alunos) e recria os containers parados na imagem nova",
+        "preaquecer.sh recria containers parados que ainda estão na imagem antiga em vez de religá-los na versão velha"
+      ]
+    },
     "1.0.5": {
       "date": "2026-08-10",
       "changes": [

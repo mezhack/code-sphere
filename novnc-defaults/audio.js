@@ -4,6 +4,11 @@
 // PulseAudio (sink virtual) -> module-simple-protocol-tcp -> websockify -> este script.
 // O stream é PCM cru s16le, mono, 22050 Hz, sem codec, para manter a latência baixa.
 //
+// Cada pedaço vira um AudioBuffer agendado no relógio do AudioContext, colado no
+// fim do anterior. NÃO usar AudioWorklet: o Chrome só o expõe em contexto seguro
+// (HTTPS ou localhost), e os Chromebooks abrem a sala em http://IP-DO-SERVIDOR/ —
+// lá audioWorklet é undefined e o som nunca tocava.
+//
 // Ver ADR-0011.
 
 (function () {
@@ -12,61 +17,16 @@
   var TAXA = 22050;
   var LATENCIA_ALVO = 0.15; // segundos acumulados antes de começar a tocar
   var LATENCIA_MAX = 0.50;  // acima disso descarta o atraso acumulado
+  var BLOCO_MIN = 512;      // amostras (~23 ms) agrupadas por nó, para não criar nó demais
 
   var m = window.location.pathname.match(/\/screen\/([^\/]+)\//);
   if (!m) return;
   var aluno = m[1];
 
-  var ctx = null, node = null, ws = null;
+  var ctx = null, ws = null;
   var ligado = false, resto = null, tentarDeNovo = null;
-
-  var PROCESSOR = [
-    "class PCMPlayer extends AudioWorkletProcessor {",
-    "  constructor(options) {",
-    "    super();",
-    "    var o = options.processorOptions || {};",
-    "    this.minAmostras = o.min || 0;",
-    "    this.maxAmostras = o.max || 0;",
-    "    this.fila = []; this.total = 0; this.offset = 0; this.tocando = false;",
-    "    this.port.onmessage = (e) => {",
-    "      if (e.data === 'limpar') {",
-    "        this.fila = []; this.total = 0; this.offset = 0; this.tocando = false; return;",
-    "      }",
-    "      this.fila.push(e.data);",
-    "      this.total += e.data.length;",
-    // Se o buffer cresceu demais (aba em segundo plano, rede engasgou), descarta o
-    // mais antigo. Preferimos perder som a acumular atraso indefinidamente.
-    "      while (this.total > this.maxAmostras && this.fila.length > 1) {",
-    "        var c = this.fila.shift();",
-    "        this.total -= (c.length - this.offset);",
-    "        this.offset = 0;",
-    "      }",
-    "    };",
-    "  }",
-    "  process(inputs, outputs) {",
-    "    var saida = outputs[0][0];",
-    "    if (!saida) return true;",
-    "    if (!this.tocando) {",
-    "      if (this.total < this.minAmostras) { saida.fill(0); return true; }",
-    "      this.tocando = true;",
-    "    }",
-    "    var i = 0;",
-    "    while (i < saida.length) {",
-    "      if (this.fila.length === 0) {",
-    // Underrun: completa com silêncio e volta a encher o buffer antes de seguir.
-    "        saida.fill(0, i); this.tocando = false; break;",
-    "      }",
-    "      var c = this.fila[0];",
-    "      var n = Math.min(saida.length - i, c.length - this.offset);",
-    "      saida.set(c.subarray(this.offset, this.offset + n), i);",
-    "      i += n; this.offset += n; this.total -= n;",
-    "      if (this.offset >= c.length) { this.fila.shift(); this.offset = 0; }",
-    "    }",
-    "    return true;",
-    "  }",
-    "}",
-    "registerProcessor('pcm-player', PCMPlayer);"
-  ].join("\n");
+  var proximo = 0, descartando = false;
+  var pendente = [], pendenteN = 0;
 
   var botao = document.createElement("button");
   botao.textContent = "Ativar som";
@@ -120,6 +80,49 @@
     return f32;
   }
 
+  // Agenda as amostras logo depois do que já está na fila do AudioContext.
+  // proximo é o instante (relógio do áudio) em que o último pedaço termina.
+  function agendar(amostras) {
+    var agora = ctx.currentTime;
+    var adiantado = proximo - agora;
+    if (adiantado < 0.01) {
+      // Início ou underrun: acumula LATENCIA_ALVO de folga antes de tocar de novo.
+      proximo = agora + LATENCIA_ALVO;
+      descartando = false;
+    } else if (descartando || adiantado > LATENCIA_MAX) {
+      // Atraso acumulado (aba em segundo plano, rede engasgou): joga fora até
+      // voltar à latência alvo. Preferimos perder som a tocar meio segundo atrasado.
+      descartando = adiantado > LATENCIA_ALVO;
+      if (descartando) return;
+    }
+    var buf = ctx.createBuffer(1, amostras.length, TAXA);
+    buf.getChannelData(0).set(amostras);
+    var src = ctx.createBufferSource();
+    src.buffer = buf;
+    src.connect(ctx.destination);
+    src.start(proximo);
+    proximo += buf.duration;
+  }
+
+  function receber(f32) {
+    pendente.push(f32);
+    pendenteN += f32.length;
+    if (pendenteN < BLOCO_MIN) return;
+    var bloco = pendente.length === 1 ? pendente[0] : new Float32Array(pendenteN);
+    if (pendente.length > 1) {
+      for (var i = 0, o = 0; i < pendente.length; i++) {
+        bloco.set(pendente[i], o); o += pendente[i].length;
+      }
+    }
+    pendente = []; pendenteN = 0;
+    agendar(bloco);
+  }
+
+  function limparFila() {
+    resto = null; pendente = []; pendenteN = 0;
+    proximo = 0; descartando = false;
+  }
+
   function conectar() {
     var proto = window.location.protocol === "https:" ? "wss:" : "ws:";
     var url = proto + "//" + window.location.host + "/audio/" + aluno + "/";
@@ -129,15 +132,14 @@
 
     ws.onopen = function () { estado("Som ligado", true); };
     ws.onmessage = function (ev) {
-      if (!node || typeof ev.data === "string") return;
+      if (!ctx || typeof ev.data === "string") return;
       var f32 = converter(ev.data);
-      if (f32.length) node.port.postMessage(f32, [f32.buffer]);
+      if (f32.length) receber(f32);
     };
     ws.onclose = function () {
       if (!ligado) return;
       estado("Som reconectando...", false);
-      if (node) node.port.postMessage("limpar");
-      resto = null;
+      limparFila();
       tentarDeNovo = setTimeout(conectar, 2000);
     };
     ws.onerror = function () { try { ws.close(); } catch (e) {} };
@@ -147,39 +149,26 @@
     ligado = false;
     if (tentarDeNovo) { clearTimeout(tentarDeNovo); tentarDeNovo = null; }
     if (ws) { try { ws.close(); } catch (e) {} ws = null; }
-    if (node) { try { node.disconnect(); } catch (e) {} node = null; }
     if (ctx) { try { ctx.close(); } catch (e) {} ctx = null; }
-    resto = null;
+    limparFila();
     estado("Ativar som", false);
   }
 
-  async function ligar() {
-    estado("Conectando...", false);
+  // Tudo síncrono dentro do clique: o Chrome só libera o AudioContext quando ele
+  // é criado (ou retomado) durante o gesto do usuário.
+  function ligar() {
     var AC = window.AudioContext || window.webkitAudioContext;
-    if (!AC || !AC.prototype.audioWorklet) {
+    if (!AC) {
       estado("Som indisponível", false);
       botao.disabled = true;
       return;
     }
-    // Abrimos o contexto na taxa do stream para não precisar reamostrar no navegador.
-    ctx = new AC({ sampleRate: TAXA });
-    var blob = new Blob([PROCESSOR], { type: "application/javascript" });
-    var urlBlob = URL.createObjectURL(blob);
-    try {
-      await ctx.audioWorklet.addModule(urlBlob);
-    } finally {
-      URL.revokeObjectURL(urlBlob);
-    }
-    node = new AudioWorkletNode(ctx, "pcm-player", {
-      numberOfInputs: 0,
-      outputChannelCount: [1],
-      processorOptions: {
-        min: Math.round(TAXA * LATENCIA_ALVO),
-        max: Math.round(TAXA * LATENCIA_MAX)
-      }
-    });
-    node.connect(ctx.destination);
-    if (ctx.state === "suspended") await ctx.resume();
+    estado("Conectando...", false);
+    // Na taxa do stream o navegador não precisa reamostrar; se recusar a taxa,
+    // o contexto padrão também serve — o AudioBuffer de 22050 Hz é convertido.
+    try { ctx = new AC({ sampleRate: TAXA }); } catch (e) { ctx = new AC(); }
+    if (ctx.state === "suspended" && ctx.resume) ctx.resume();
+    limparFila();
     ligado = true;
     conectar();
   }
@@ -190,7 +179,7 @@
     if (ligado) {
       desligar();
     } else {
-      ligar().catch(function () { desligar(); estado("Som falhou", false); });
+      try { ligar(); } catch (e) { desligar(); estado("Som falhou", false); }
     }
     devolverFoco();
   });

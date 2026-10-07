@@ -208,6 +208,13 @@ docker exec sala_aluno01 printenv SDL_AUDIODRIVER
 
 First, the student must click **"Ativar som"** in the monitor tab. Browsers refuse to start audio without a user gesture, so nothing plays before that click. The button turns green and reads "Som ligado" when the stream is connected.
 
+If the button reads **"Som indisponível"** on a Chromebook, the student image predates v1.0.6. Up to v1.0.5 the player used an `AudioWorklet`, which Chrome only exposes on HTTPS or `localhost` — on `http://IP-DO-SERVIDOR/` it does not exist, so audio never worked in the classroom. Rebuild the student image (`docker build -f aluno.Dockerfile -t sala-aluno:latest .`), then `./parar.sh` and log in again so the containers are recreated on the new image. Confirm the new player is in the image:
+
+```bash
+docker run --rm --entrypoint grep sala-aluno:latest -c createBufferSource /usr/share/novnc/audio.js
+# Should print a number greater than 0
+```
+
 If the button never turns green, check the audio chain inside the container:
 
 ```bash
@@ -242,7 +249,7 @@ If it is missing, the routes were generated before v1.0.5 — run `./gerar.sh` a
 
 The player keeps a jitter buffer: it waits until 150 ms of audio has arrived before starting, and discards the backlog when it exceeds 500 ms. A slow or saturated network makes it underrun (brief silences) or discard (skips).
 
-Audio is 353 kbps per student on top of the VNC video. With 30 students that is roughly 10 Mbps of audio alone. If the classroom wifi is the bottleneck, halve it by lowering the rate in the startup script (`rate=22050` → `rate=11025` in the `module-simple-protocol-tcp` line of `aluno.Dockerfile`), then rebuild.
+Audio is 353 kbps per student on top of the VNC video. With 30 students that is roughly 10 Mbps of audio alone. If the classroom wifi is the bottleneck, halve it by lowering the rate in the startup script (`rate=22050` → `rate=11025` in the `module-simple-protocol-tcp` line of `aluno.Dockerfile`, **and** `TAXA = 11025` in `novnc-defaults/audio.js` — the two must match, or the sound plays at the wrong speed), then rebuild.
 
 Remember the audio path also competes for the same CPU quota as the game (~3.8% of a core).
 

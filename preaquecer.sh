@@ -46,6 +46,8 @@ echo "==> Pré-aquecendo $LABEL ..."
 echo "    (rode isso 10-15 min antes da aula)"
 echo ""
 
+IMAGEM_ATUAL=$(docker image inspect --format '{{.Id}}' sala-aluno:latest 2>/dev/null || echo "")
+
 iniciados=0
 ja_rodando=0
 erros=0
@@ -55,6 +57,14 @@ for i in $(seq "$INICIO" "$FIM"); do
     container="sala_${nome}"
 
     status=$(docker inspect --format '{{.State.Status}}' "$container" 2>/dev/null || echo "nao_existe")
+
+    # Container parado criado com uma imagem antiga (antes de um rebuild): o
+    # docker start o religaria na versão velha, então recria antes de subir.
+    if [ -n "$IMAGEM_ATUAL" ] && { [ "$status" = "created" ] || [ "$status" = "exited" ]; }; then
+        if [ "$(docker inspect --format '{{.Image}}' "$container" 2>/dev/null)" != "$IMAGEM_ATUAL" ]; then
+            docker compose create --force-recreate "$nome" >/dev/null 2>&1 || true
+        fi
+    fi
 
     case "$status" in
       running)

@@ -71,11 +71,19 @@ ok "Arquivos de configuração gerados."
 $DC build portal
 ok "Imagem do portal reconstruída."
 
-# Reconstrói imagem do aluno apenas se o Dockerfile mudou
-if git diff "$HEAD_ANTES" HEAD -- aluno.Dockerfile | grep -q '^[+-]'; then
-    echo "  aluno.Dockerfile foi alterado — reconstruindo imagem dos alunos..."
+# Reconstrói imagem do aluno apenas se algo copiado para ela mudou
+# (novnc-defaults/ entra na imagem via COPY — ex.: o player de áudio)
+if git diff "$HEAD_ANTES" HEAD -- aluno.Dockerfile novnc-defaults/ | grep -q '^[+-]'; then
+    echo "  Imagem dos alunos alterada — reconstruindo..."
     docker build -f aluno.Dockerfile -t sala-aluno:latest .
     ok "Imagem dos alunos reconstruída."
+    # Containers já criados continuariam na imagem antiga quando religados por
+    # docker start (preaquecer.sh). Recriá-los parados garante a imagem nova.
+    source config.env
+    ALUNOS=$(for i in $(seq 1 "$QUANTIDADE_ALUNOS"); do printf "aluno%02d " "$i"; done)
+    # shellcheck disable=SC2086
+    $DC create --force-recreate $ALUNOS >/dev/null
+    ok "Containers dos alunos recriados com a imagem nova."
 else
     ok "Imagem dos alunos sem alteração — pulando rebuild."
 fi
