@@ -21,7 +21,7 @@ Inside each student container:
 1. PulseAudio runs as `abc` with `-n` (no default config) and exactly three modules: `module-null-sink` (there is no sound card), `module-native-protocol-unix` with `auth-anonymous=1`, and `module-simple-protocol-tcp` publishing `virtual.monitor` on `127.0.0.1:4713`.
 2. A second `websockify` bridges that TCP port to `6081` — the same tool already in the image for noVNC, so no new dependency.
 3. Traefik routes `/audio/alunoXX/` to port 6081, mirroring the existing `/screen/alunoXX/` route.
-4. `novnc-defaults/audio.js` is injected into noVNC's own `vnc.html` and plays the stream through an `AudioWorklet`.
+4. `novnc-defaults/audio.js` is injected into noVNC's own `vnc.html` and plays the stream by scheduling one `AudioBuffer` per chunk, back to back, on the `AudioContext` clock (see the v1.0.6 amendment below).
 
 `SDL_AUDIODRIVER` is set to **`pulse,dummy`** — a list, not a single driver. See the consequences below; this is the part most likely to be "simplified" by a later change and must not be.
 
@@ -48,6 +48,8 @@ Inside each student container:
 **Latency is designed, not measured.** The jitter buffer starts playback at 150 ms and discards backlog beyond 500 ms. Real end-to-end latency in a classroom has not been measured — that needs students and a network, not a container.
 
 **Sound is per-student and private.** Each container has its own sink; the teacher hears nothing centrally. Thirty students playing sounds at once is a classroom-management problem, not a technical one, and headphones are the answer.
+
+**Amendment (v1.0.6): no `AudioWorklet`.** The first version played the stream through an `AudioWorklet`. Chrome only exposes `audioWorklet` in a [secure context](https://developer.mozilla.org/en-US/docs/Web/Security/Secure_Contexts) — HTTPS or `localhost`. It was validated from `localhost`, but students open the classroom on Chromebooks at `http://IP-DO-SERVIDOR/`, where `audioWorklet` is `undefined` and the button only ever said "Som indisponível". The player now schedules `AudioBufferSourceNode`s on the context clock, which works in any context. The jitter buffer is the same (start 150 ms ahead, drop back to 150 ms once more than 500 ms is queued). Verified in headless Chromium on a plain-HTTP, non-localhost origin: the old player reported "Som indisponível"; the new one played 3 s of a 440 Hz test tone in 3 s, in 64 contiguous buffers with no gaps, RMS matching the source. It was then verified on the real stack — student image built from `aluno.Dockerfile`, real Traefik routes, 256 MB / 0.5 CPU limits, a pygame program running as `abc` playing a 440 Hz loop — opened in Chromium at `http://172.18.0.3/screen/aluno01/vnc.html` (plain HTTP, not localhost, `isSecureContext === false`): with the v1.0.5 player the button showed "Som indisponível" and 0 s of audio reached the speaker; with the new player it showed "Som ligado" and 3.98 s of the game's audio played in 4 s, with no page errors. Serving the platform over HTTPS was rejected as the fix: it needs certificates trusted by every Chromebook on a LAN with no domain name. Do not reintroduce `AudioWorklet` unless the platform moves to HTTPS.
 
 **The injected `<script>` tag is fragile against upstream.** It is added with `sed` into the distribution's `vnc.html`. The build fails loudly (`grep -q`) if the tag is not present afterwards, so a noVNC package update that changes the file cannot pass silently.
 

@@ -89,6 +89,9 @@ window.location.replace("vnc.html?autoconnect=true&path=" + p.slice(1) + "/webso
 
 # Player de áudio: injetado no vnc.html do próprio noVNC em vez de embrulhar a
 # página num iframe, que quebraria o encaminhamento de teclado para o jogo.
+# Ele precisa funcionar em http://IP-DO-SERVIDOR/ (contexto não seguro), por isso
+# agenda AudioBuffers em vez de usar AudioWorklet — ver ADR-0011.
+# Mudou o audio.js? A imagem precisa ser reconstruída (o atualizar.sh já detecta).
 COPY novnc-defaults/audio.js /usr/share/novnc/audio.js
 RUN sed -i 's#</body>#<script src="audio.js"></script>\n</body>#' /usr/share/novnc/vnc.html && \
     grep -q 'audio.js' /usr/share/novnc/vnc.html
