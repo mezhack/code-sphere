@@ -1,7 +1,13 @@
 {
-  "version": "1.0.6",
+  "version": "1.0.7",
   "release_date": "2026-10-08",
   "changelog": {
+    "1.0.7": {
+      "date": "2026-10-08",
+      "changes": [
+        "Fix: atualizar.sh parava logo depois de 'Parando containers de alunos...' quando nenhum aluno estava conectado — o grep do parar.sh não achava nada, saía com erro e o set -o pipefail encerrava o parar.sh (e o atualizar.sh junto) antes de parar a infraestrutura"
+      ]
+    },
     "1.0.6": {
       "date": "2026-10-08",
       "changes": [
