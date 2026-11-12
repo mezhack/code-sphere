@@ -1,6 +1,6 @@
 """Portal de acesso da sala de aula."""
 from __future__ import annotations
-import json, os, secrets, string, threading, time
+import json, os, random, secrets, string, threading, time, unicodedata
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Optional
@@ -372,13 +372,15 @@ def admin_painel():
     alunos = carregar_alunos(); sessoes = carregar_sessoes(); agora = time.time()
     # Uma única chamada Docker para listar todos os ativos
     ativos_set = listar_containers_ativos()
+    eg_log = _load(EG_RESPOSTAS_FILE, {})
     lista = []
     for nome in sorted(alunos.keys()):
         ativo = f"sala_{nome}" in ativos_set
         # Stats só para containers ativos, e sem bloquear a renderização
         st = {}
         sess = sessoes.get(nome)
-        lista.append({"nome": nome, "precisa_trocar": alunos[nome].get("precisa_trocar", False),
+        lista.append({"nome": nome, "eg": eg_luz(nome, eg_log), "jogando": eg_jogando(nome),
+                      "precisa_trocar": alunos[nome].get("precisa_trocar", False),
                       "ultimo_login": alunos[nome].get("ultimo_login"), "ativo_agora": ativo,
                       "minutos_inatividade": round((agora-sess["ultimo_acesso"])/60,1) if sess else None,
                       "cpu": st.get("cpu"), "ram": st.get("ram")})
@@ -390,6 +392,7 @@ def admin_painel():
     return render_template("admin_painel.html", alunos=lista,
                            ativos=sum(1 for a in lista if a["ativo_agora"]),
                            ram_total=ram_total, ram_livre=ram_livre,
+                           jogo_ligado=container_status("jogo") == "running",
                            timeout_min=INATIVIDADE_MINUTOS)
 
 @app.route("/admin/resetar/<aluno>", methods=["POST"])
@@ -440,14 +443,103 @@ def admin_resetar_todas():
 def admin_api_stats():
     checar_admin(); alunos = carregar_alunos(); sessoes = carregar_sessoes(); agora = time.time()
     ativos_set = listar_containers_ativos()
+    eg_log = _load(EG_RESPOSTAS_FILE, {})
     result = {}
     for nome in alunos:
         ativo = f"sala_{nome}" in ativos_set
         st = stats_container(nome) if ativo else {}
         sess = sessoes.get(nome)
         result[nome] = {"ativo": ativo, "cpu": st.get("cpu"), "ram": st.get("ram"),
+                        "eg": eg_luz(nome, eg_log), "jogando": eg_jogando(nome),
                         "inatividade": round((agora-sess["ultimo_acesso"])/60,1) if sess else None}
     return jsonify(result)
+
+# ── Bônus ────────────────────────────────────────────────────────────────────
+EG_PERGUNTAS_FILE = DATA_DIR / "eg_perguntas.json"
+EG_RESPOSTAS_FILE = DATA_DIR / "eg_respostas.json"
+EG_PASSE_SEGUNDOS = 150   # a aba do jogo renova a cada 30 s; sem renovar, o passe vence
+EG_MAX_RESPOSTAS  = 50    # por aluno
+_eg_passes: dict = {}     # aluno -> último sinal de vida; em memória de propósito
+_eg_lock = threading.Lock()
+
+def eg_normalizar(texto) -> str:
+    """Ignora maiúsculas, acentos e símbolos: 'Herança' == 'heranca', '__init__' == 'init'."""
+    decomposto = unicodedata.normalize("NFD", str(texto).casefold())
+    return "".join(c for c in decomposto if c.isalnum())
+
+def eg_jogando(aluno) -> bool:
+    return time.time() - _eg_passes.get(aluno, 0) < EG_PASSE_SEGUNDOS
+
+def eg_luz(aluno, log) -> str:
+    respostas = log.get(aluno) or []
+    if not respostas: return "nunca"
+    return "ok" if respostas[-1]["certa"] else "erro"
+
+def eg_disponivel() -> bool:
+    return "aluno" in session and container_status("jogo") == "running"
+
+@app.route("/eg/pergunta")
+def eg_pergunta():
+    perguntas = _load(EG_PERGUNTAS_FILE, [])
+    if not perguntas or not eg_disponivel(): abort(404)
+    session["eg_pergunta"] = random.randrange(len(perguntas))
+    return jsonify({"pergunta": perguntas[session["eg_pergunta"]]["pergunta"]})
+
+@app.route("/eg/responder", methods=["POST"])
+def eg_responder():
+    perguntas = _load(EG_PERGUNTAS_FILE, [])
+    # pop: cada pergunta sorteada vale uma única tentativa
+    i = session.pop("eg_pergunta", None)
+    if i is None or i >= len(perguntas) or not eg_disponivel(): abort(404)
+    aluno = session["aluno"]
+    dada = str((request.get_json(silent=True) or {}).get("resposta", ""))[:80]
+    norm = eg_normalizar(dada)
+    certa = bool(norm) and norm in {eg_normalizar(r) for r in perguntas[i]["respostas"]}
+    with _eg_lock:
+        log = _load(EG_RESPOSTAS_FILE, {})
+        log[aluno] = (log.get(aluno, []) + [{
+            "quando": datetime.now().strftime("%d/%m %H:%M"),
+            "pergunta": perguntas[i]["pergunta"], "resposta": dada, "certa": certa,
+        }])[-EG_MAX_RESPOSTAS:]
+        _save(EG_RESPOSTAS_FILE, log)
+    if certa: _eg_passes[aluno] = time.time()
+    return jsonify({"ok": certa})
+
+@app.route("/eg/auth")
+def eg_auth():
+    """forwardAuth do Traefik: decide cada requisição a /jogo, /vcbr e /vcsky."""
+    if session.get("admin") or eg_jogando(session.get("aluno")): return "", 200
+    return "", 403
+
+@app.route("/eg/ping", methods=["POST"])
+def eg_ping():
+    aluno = session.get("aluno")
+    if not eg_jogando(aluno): return "", 403
+    _eg_passes[aluno] = time.time()
+    return "", 204
+
+@app.route("/admin/jogo/<acao>", methods=["POST"])
+def admin_jogo(acao):
+    checar_admin()
+    try:
+        c = dc().containers.get("sala_jogo")
+        if acao == "ligar":
+            if not _load(EG_PERGUNTAS_FILE, []):
+                flash("Bônus sem perguntas: crie portal-data/eg_perguntas.json.", "erro")
+            else:
+                c.start(); flash("Bônus ligado.", "sucesso")
+        else:
+            c.stop(timeout=5); _eg_passes.clear(); flash("Bônus desligado.", "sucesso")
+    except docker.errors.NotFound:
+        flash("Bônus não preparado neste servidor: rode ./preparar_jogo.sh e ./iniciar.sh.", "erro")
+    except Exception as e:
+        app.logger.exception(f"Erro ao {acao} o bônus: {e}"); flash("Falha ao alterar o bônus.", "erro")
+    return redirect(url_for("admin_painel"))
+
+@app.route("/admin/eg/<aluno>")
+def admin_eg(aluno):
+    checar_admin()
+    return jsonify(_load(EG_RESPOSTAS_FILE, {}).get(aluno, [])[::-1])
 
 @app.route("/healthz")
 def healthz(): return {"ok": True}

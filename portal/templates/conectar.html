@@ -42,7 +42,72 @@
     <input type="hidden" name="base" value="{{ url_destino.rstrip('/') }}">
   </form>
 
+  <dialog id="eg" style="border:none;border-radius:12px;padding:28px;max-width:380px;width:90%">
+    <form id="eg-form" method="dialog" autocomplete="off">
+      <p id="eg-pergunta" style="font-weight:600;color:var(--deep);margin:0 0 4px"></p>
+      <p class="muted" style="margin:0">Responda com uma palavra.</p>
+      <input type="text" id="eg-resposta" maxlength="80" aria-labelledby="eg-pergunta" style="margin-top:12px">
+      <p id="eg-msg" class="muted" style="color:#c0392b;min-height:18px;margin:8px 0 0"></p>
+      <button type="submit" style="margin-top:8px">Responder</button>
+    </form>
+    <p id="eg-ok" style="display:none;text-align:center;margin:0">
+      <a href="/jogo/" target="_blank" class="btn" style="margin:0"
+         onclick="document.getElementById('eg').close()">▶ Abrir</a>
+    </p>
+  </dialog>
+
   <script>
+    (() => {
+      const SEQ = ["arrowup","arrowup","arrowdown","arrowdown","arrowleft","arrowright","arrowleft","arrowright","b","a","enter"];
+      const dlg = document.getElementById("eg"), form = document.getElementById("eg-form");
+      const campo = document.getElementById("eg-resposta"), msg = document.getElementById("eg-msg");
+      let pos = 0;
+
+      async function sortear() {
+        const r = await fetch("/eg/pergunta", { credentials: "same-origin" });
+        if (!r.ok) return false;
+        document.getElementById("eg-pergunta").textContent = (await r.json()).pergunta;
+        campo.value = "";
+        return true;
+      }
+
+      document.addEventListener("keydown", async (e) => {
+        if (dlg.open) return;
+        const k = e.key.toLowerCase();
+        pos = k === SEQ[pos] ? pos + 1 : (k === SEQ[0] ? 1 : 0);
+        if (pos < SEQ.length) return;
+        pos = 0;
+        e.preventDefault();  // o Enter final não deve clicar no botão que estiver em foco
+        try {
+          if (!(await sortear())) return;
+        } catch { return; }
+        msg.textContent = "";
+        form.style.display = "";
+        document.getElementById("eg-ok").style.display = "none";
+        dlg.showModal();
+        campo.focus();
+      });
+
+      form.addEventListener("submit", async (e) => {
+        e.preventDefault();
+        try {
+          const r = await fetch("/eg/responder", {
+            method: "POST", credentials: "same-origin",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ resposta: campo.value }),
+          });
+          if (r.ok && (await r.json()).ok) {
+            form.style.display = "none";
+            document.getElementById("eg-ok").style.display = "block";
+            return;
+          }
+          if (!(await sortear())) return dlg.close();
+          msg.textContent = "Não foi dessa vez. Tente esta:";
+          campo.focus();
+        } catch { dlg.close(); }
+      });
+    })();
+
     const STATUS_MSGS = [
       "⏳ Iniciando seu ambiente...",
       "🐍 Carregando Python e extensões...",

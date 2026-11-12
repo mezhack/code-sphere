@@ -47,6 +47,12 @@
       </button>
     </form>
 
+    <form method="post" action="{{ url_for('admin_jogo', acao='desligar' if jogo_ligado else 'ligar') }}">
+      <button type="submit" class="btn btn-sm" style="background:{{ '#16a34a' if jogo_ligado else '#6b7280' }}">
+        🎁 Bônus: {{ 'ligado' if jogo_ligado else 'desligado' }}
+      </button>
+    </form>
+
     <button onclick="atualizarStats()" class="btn btn-sm" style="background:#6b7280">
       🔄 Atualizar stats
     </button>
@@ -54,6 +60,7 @@
 
   <!-- Tabela de alunos -->
   <h2>Alunos</h2>
+  <p class="muted" style="margin:0">EG?: verde = acertou a última pergunta · vermelho = tentou e errou · cinza = não encontrou · ▶ = jogando agora. Clique na luz para ver as respostas.</p>
   <table id="tabela-alunos">
     <thead>
       <tr>
@@ -63,6 +70,7 @@
         <th>RAM (MB)</th>
         <th>Inatividade</th>
         <th>Último login</th>
+        <th>EG?</th>
         <th>Ações</th>
       </tr>
     </thead>
@@ -92,6 +100,11 @@
           {% if a.ultimo_login %}{{ a.ultimo_login[:16]|replace('T',' ') }}{% else %}nunca{% endif %}
         </td>
         <td style="white-space:nowrap">
+          <button type="button" class="eg-luz" id="eg-{{ a.nome }}" data-eg="{{ a.eg }}"
+                  onclick="verEG('{{ a.nome }}')" aria-label="Respostas de {{ a.nome }} no bônus"></button>
+          <span class="tag tag-on" id="jogando-{{ a.nome }}" title="jogando agora" {% if not a.jogando %}hidden{% endif %}>▶</span>
+        </td>
+        <td style="white-space:nowrap">
           <a href="{{ url_for('admin_arquivos', aluno=a.nome) }}"
              class="btn btn-sm" style="background:#0d9488">📁 Arquivos</a>
           <form class="inline" method="post"
@@ -117,7 +130,44 @@
     </tbody>
   </table>
 
+  <style>
+    .eg-luz{width:16px;height:16px;padding:0;margin:0 4px 0 0;border-radius:50%;vertical-align:middle;background:#9ca3af}
+    .eg-luz[data-eg=ok]{background:#22c55e;box-shadow:0 0 6px #22c55e}
+    .eg-luz[data-eg=erro]{background:#ef4444;box-shadow:0 0 6px #ef4444}
+    .tag[hidden]{display:none}
+  </style>
+  <dialog id="eg-relatorio" style="border:none;border-radius:12px;padding:24px;max-width:640px;width:92%">
+    <h2 id="eg-titulo" style="margin-top:0"></h2>
+    <div id="eg-corpo" style="max-height:60vh;overflow:auto"></div>
+    <form method="dialog"><button class="btn-sm" style="margin-top:14px">Fechar</button></form>
+  </dialog>
+
   <script>
+    // Verde: última resposta certa. Vermelha: tentou e errou. Cinza: nunca achou o bônus.
+    async function verEG(nome) {
+      const respostas = await (await fetch(`/admin/eg/${nome}`)).json();
+      document.getElementById("eg-titulo").textContent = `Bônus — ${nome}`;
+      const corpo = document.getElementById("eg-corpo");
+      corpo.replaceChildren();
+      if (!respostas.length) {
+        corpo.textContent = "Nenhuma tentativa: este aluno ainda não encontrou o bônus.";
+      } else {
+        const tabela = document.createElement("table");
+        tabela.innerHTML = "<thead><tr><th>Quando</th><th>Pergunta</th><th>Resposta</th><th></th></tr></thead>";
+        const tbody = tabela.createTBody();
+        for (const r of respostas) {
+          const tr = tbody.insertRow();
+          // textContent: a resposta é texto livre digitado pelo aluno
+          for (const v of [r.quando, r.pergunta, r.resposta, r.certa ? "✔ certa" : "✘ errada"]) {
+            tr.insertCell().textContent = v;
+          }
+          tr.lastChild.style.color = r.certa ? "#15803d" : "#b91c1c";
+        }
+        corpo.appendChild(tabela);
+      }
+      document.getElementById("eg-relatorio").showModal();
+    }
+
     // Atualiza stats sem reload de página
     async function atualizarStats() {
       try {
@@ -136,6 +186,10 @@
           if (ramEl) ramEl.textContent = s.ram != null ? s.ram : "—";
           const iEl = document.getElementById(`inat-${nome}`);
           if (iEl) iEl.textContent = s.inatividade != null ? s.inatividade + " min" : "—";
+          const egEl = document.getElementById(`eg-${nome}`);
+          if (egEl) egEl.dataset.eg = s.eg;
+          const jogEl = document.getElementById(`jogando-${nome}`);
+          if (jogEl) jogEl.hidden = !s.jogando;
           if (s.ativo) ativos++;
         }
         const el = document.getElementById("stat-ativos");

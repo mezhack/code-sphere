@@ -1,0 +1,10 @@
+[
+  {
+    "pergunta": "Qual função mostra um texto na tela?",
+    "respostas": ["print"]
+  },
+  {
+    "pergunta": "Quanto é 2 + 2? (por extenso)",
+    "respostas": ["quatro", "4"]
+  }
+]

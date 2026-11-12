@@ -2,7 +2,7 @@
 
 **Status:** Implemented
 **Owner:** Project lead
-**Last Updated:** 2026-05-11
+**Last Updated:** 2026-11-12
 
 ## Context
 
@@ -26,6 +26,7 @@ The panel header shows the code-sphere logo alongside the "Painel do Professor" 
    - Last login timestamp (from `alunos.json`)
    - Whether the container is currently running (from the set above)
    - Idle time in minutes (from `sessoes.json`)
+   - The **EG?** light and the ▶ "playing now" badge (from `eg_respostas.json` and the in-memory passes — see [Feature: Bonus Game](./bonus-game.md))
 4. Portal also reads `/proc/meminfo` to show server-level RAM total and free.
 5. Page renders with all rows. CPU and RAM per student are shown as "—" initially.
 
@@ -52,6 +53,11 @@ Bulk actions:
 
 - **⏹ Stop all** — `POST /admin/parar-todos`. Iterates and stops all running student containers.
 - **🔑 Reset all passwords** — `POST /admin/resetar-todas` with confirmation text "RESETAR TODAS". Resets every student to the initial password.
+- **🎁 Bônus: ligado/desligado** — `POST /admin/jogo/ligar` or `/admin/jogo/desligar`. Starts or stops the bonus game container for the whole class.
+
+Per-student bonus report:
+
+- **EG? light** — `GET /admin/eg/<aluno>`. Opens a dialog with the student's recent answers to the bonus question.
 
 ### Inputs
 
@@ -105,3 +111,4 @@ This separation prevents the admin panel from becoming a complex LMS-lite. Teach
 - [Feature: Container Lifecycle](./container-lifecycle.md)
 - [Feature: File Viewer](./file-viewer.md)
 - [Feature: Version Check](./version-check.md)
+- [Feature: Bonus Game](./bonus-game.md)

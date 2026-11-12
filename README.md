@@ -249,6 +249,7 @@ code-sphere/
 ├── parar.sh                      ← para a sala
 ├── atualizar.sh                  ← atualiza o sistema para nova versão
 ├── preaquecer.sh                 ← sobe containers antes da aula começar
+├── preparar_jogo.sh              ← prepara o bônus (opcional, uma vez por servidor)
 ├── backup.sh                     ← backup dos workspaces
 ├── resetar_workspace.sh          ← apaga dados de um aluno
 ├── instalar_pacotes.sh           ← instala libs Python em todos

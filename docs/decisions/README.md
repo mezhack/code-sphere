@@ -55,6 +55,7 @@ Links to related discussions, ADRs, or external resources.
 | [0009](./0009-fast-restart-s6.md) | Fast restart via s6-svc for pre-warmed containers | Accepted |
 | [0010](./0010-pygame-zero-sem-window-manager.md) | Pygame Zero on the virtual display without a window manager | Accepted |
 | [0011](./0011-audio-pcm-cru-via-websockify.md) | Audio to the browser as raw PCM over websockify | Accepted |
+| [0012](./0012-jogo-bonus-dados-no-servidor.md) | Bonus game served from the server, gated by the portal | Accepted |
 
 ## Adding a New ADR
 

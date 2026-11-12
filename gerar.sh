@@ -42,6 +42,11 @@ http:
         servers:
           - url: "http://sala_portal:5000"
 
+    jogo-svc:
+      loadBalancer:
+        servers:
+          - url: "http://sala_jogo:80"
+
 HEADER
 
 for i in $(seq 1 "$QUANTIDADE_ALUNOS"); do
@@ -68,6 +73,11 @@ done
 cat >> "$ROUTES" <<'MW_HEADER'
 
   middlewares:
+
+    # Bônus: o portal decide cada requisição (sessão de aluno com passe válido).
+    jogo-auth:
+      forwardAuth:
+        address: "http://sala_portal:5000/eg/auth"
 MW_HEADER
 
 for i in $(seq 1 "$QUANTIDADE_ALUNOS"); do
@@ -96,11 +106,21 @@ cat >> "$ROUTES" <<'R_HEADER'
   routers:
 
     portal-router:
-      rule: "Path(`/`) || PathPrefix(`/login`) || PathPrefix(`/logout`) || PathPrefix(`/trocar-senha`) || PathPrefix(`/conectar`) || PathPrefix(`/aguardar`) || PathPrefix(`/ping`) || PathPrefix(`/heartbeat`) || PathPrefix(`/admin`) || PathPrefix(`/healthz`) || PathPrefix(`/static`) || PathPrefix(`/changelog`) || PathPrefix(`/about`)"
+      rule: "Path(`/`) || PathPrefix(`/login`) || PathPrefix(`/logout`) || PathPrefix(`/trocar-senha`) || PathPrefix(`/conectar`) || PathPrefix(`/aguardar`) || PathPrefix(`/ping`) || PathPrefix(`/heartbeat`) || PathPrefix(`/admin`) || PathPrefix(`/healthz`) || PathPrefix(`/static`) || PathPrefix(`/changelog`) || PathPrefix(`/about`) || PathPrefix(`/eg/`)"
       entryPoints:
         - web
       priority: 50
       service: portal-svc
+
+    # /vcbr e /vcsky ficam na raiz porque o binário do motor os pede por caminho absoluto.
+    jogo-router:
+      rule: "PathPrefix(`/jogo/`) || PathPrefix(`/vcbr/`) || PathPrefix(`/vcsky/`)"
+      entryPoints:
+        - web
+      priority: 100
+      middlewares:
+        - jogo-auth
+      service: jogo-svc
 
 R_HEADER
 
@@ -187,6 +207,21 @@ services:
 
 COMPOSE_HEAD
 
+
+# Bônus: container estático, criado parado; o professor liga pelo painel.
+# Só existe de fato depois de ./preparar_jogo.sh (o iniciar.sh confere).
+cat >> docker-compose.yml <<'JOGO'
+  jogo:
+    build: ./jogo
+    image: sala-jogo:latest
+    container_name: sala_jogo
+    volumes:
+      - ./jogo-data:/dados:ro
+    restart: "no"
+    networks:
+      - sala_net
+
+JOGO
 
 # Container Cloudflare Tunnel (opcional - ativa com CLOUDFLARE_TUNNEL=true)
 if [ "${CLOUDFLARE_TUNNEL:-false}" = "true" ]; then

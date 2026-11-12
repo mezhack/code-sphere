@@ -65,6 +65,8 @@ Key paths:
 - `/`, `/login`, `/conectar`, `/trocar-senha` → Portal (student flows)
 - `/admin`, `/admin/painel` → Portal (teacher flows)
 - `/changelog`, `/about`, `/static` → Portal (public, no login required)
+- `/eg/...` → Portal (bonus game: question, answer, pass check)
+- `/jogo/`, `/vcbr/`, `/vcsky/` → Bonus game container (port 80), each request authorized by the portal through `forwardAuth`
 - `/code/aluno01/` → Student 01's code-server (port 8443)
 - `/screen/aluno01/` → Student 01's noVNC virtual display (port 6080)
 - `/audio/aluno01/` → Student 01's audio stream, raw PCM over WebSocket (port 6081)
@@ -82,6 +84,7 @@ The system's brain. Handles:
 - Session timeout and idle cleanup (garbage collector thread)
 - File browsing for the admin (read-only access to student workspaces)
 - Version checking against GitHub releases
+- The bonus game: questions, passes, the on/off switch (see [Feature: Bonus Game](./features/bonus-game.md))
 
 The portal is the only component that talks to the Docker daemon. Student containers cannot escape into orchestration.
 
@@ -114,6 +117,10 @@ Containers start in `created` state and only run when:
 
 When idle for more than `INATIVIDADE_MINUTOS` minutes, the portal's garbage collector stops them. The persistent volume (`./alunos/alunoXX/`) preserves their files across stop/start cycles.
 
+### Bonus Game Container (optional)
+
+A single nginx container, `sala_jogo`, serving a browser game and its data to students who earned a pass in the portal. It exists only after the teacher runs `./preparar_jogo.sh`, starts stopped, and is switched on and off from the admin panel. The game runs entirely in the student's browser; the container only hands out files. See [ADR-0012](./decisions/0012-jogo-bonus-dados-no-servidor.md).
+
 ### Cloudflare Tunnel (optional)
 
 When enabled, provides HTTPS access without requiring a public domain, port forwarding, or SSL certificate management. The `cloudflared` container establishes an outbound connection to Cloudflare's edge, exposing the local Traefik through a `*.trycloudflare.com` URL or a fixed domain (when configured with a token).
@@ -134,9 +141,10 @@ This means even if a student bookmarks `/code/alunoXX/login`, that URL is useles
 
 ### Stateless portal, persistent students
 
-The portal's state is two JSON files in `portal-data/`:
+The portal's state is JSON files in `portal-data/`:
 - `alunos.json` — usernames and Argon2 password hashes
 - `sessoes.json` — active session tokens and last-access timestamps
+- `eg_perguntas.json`, `eg_respostas.json` — bonus game questions and the log of student answers (only when the bonus is used)
 
 Student work persists in `alunos/alunoXX/workspace/`. These directories are owned by UID 911 (the `abc` user inside `linuxserver/code-server`) and bind-mounted into the containers.
 

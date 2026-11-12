@@ -74,6 +74,7 @@ Where is this implemented in the codebase?
 | [Cloudflare HTTPS](./cloudflare-https.md) | Implemented | HTTPS without domain or router config |
 | [Version Check](./version-check.md) | Implemented | Notify admin of newer versions on GitHub |
 | [Interactive Setup](./interactive-setup.md) | Implemented | First-run configuration wizard |
+| [Bonus Game](./bonus-game.md) | Implemented | Hidden reward gated by a content question; admin switch and per-student report |
 
 ## Adding a New Feature Spec
 

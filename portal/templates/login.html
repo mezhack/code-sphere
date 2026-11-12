@@ -1,6 +1,16 @@
 {% extends "base.html" %}
 {% block titulo %}Entrar{% endblock %}
 {% block conteudo %}
+  <style>
+    @property --giro{syntax:'<angle>';initial-value:0deg;inherits:false}
+    .brilho{opacity:1!important;font-weight:600;padding:5px 12px;margin:-8px -4px;border-radius:999px;
+      border:3px solid transparent;
+      background:linear-gradient(#fff,#fff) padding-box,
+        conic-gradient(from var(--giro),#ff004c,#ff9d00,#ffe600,#2bd94f,#00c8ff,#5b5bff,#d400ff,#ff004c) border-box;
+      box-shadow:0 0 12px rgba(212,0,255,.35);animation:giro 2.5s linear infinite}
+    @keyframes giro{to{--giro:360deg}}
+    @media (prefers-reduced-motion:reduce){.brilho{animation:none}}
+  </style>
   <div style="text-align:center;margin-bottom:20px;padding-top:4px">
     <img src="{{ url_for('static', filename='logo.png') }}" alt="code-sphere"
          style="width:72%;max-width:280px;display:block;margin:0 auto">
@@ -24,6 +34,7 @@
 
   <p style="text-align:center;margin-top:20px;display:flex;justify-content:center;gap:16px">
     <a href="{{ url_for('changelog') }}"
+       {% if versao_atual == "1.1.0" %}class="brilho"{% endif %}
        style="font-size:12px;color:var(--magenta);text-decoration:none;opacity:.7">
       Versão {{ versao_atual }} — Changelog
     </a>

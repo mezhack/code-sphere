@@ -32,6 +32,11 @@ SERVICOS="traefik portal"
 # Necessário porque no WSL2 o inotify não detecta arquivos criados após o container subir.
 $DC up -d --force-recreate $SERVICOS
 
+# Bônus: só cria o container (parado) se o professor já rodou ./preparar_jogo.sh.
+if [ -f jogo-data/vcbr/vc-sky-en-v6.data ]; then
+    $DC up --no-start jogo
+fi
+
 sleep 4
 $DC ps
 
