@@ -94,6 +94,10 @@ source config.env
 SERVICOS="traefik portal"
 [ "${CLOUDFLARE_TUNNEL:-false}" = "true" ] && SERVICOS="$SERVICOS cloudflared"
 $DC up -d --force-recreate $SERVICOS
+# Bônus: o parar.sh removeu o container; recria parado, como o iniciar.sh.
+if [ -f jogo-data/vcbr/vc-sky-en-v6.data ]; then
+    $DC up --no-start --build jogo
+fi
 ok "Sala no ar."
 
 # ── Resultado ────────────────────────────────────────────────────────────────

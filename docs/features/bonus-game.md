@@ -20,6 +20,8 @@ The feature is inert on servers where the teacher has not prepared the game data
 2. Write the questions in `portal-data/eg_perguntas.json` (git-ignored; format in `portal/eg_perguntas.exemplo.json`).
 3. `./iniciar.sh` — creates the `sala_jogo` container **stopped**. It does so only if `jogo-data/` holds a converted package.
 
+`./atualizar.sh` recreates the container the same way (rebuilding the image), since `./parar.sh` removes it.
+
 ### Turning it on and off
 
 The admin panel has a **Bônus: ligado/desligado** button (`POST /admin/jogo/ligar|desligar`). It starts or stops the `sala_jogo` container; the container state is the switch. The bonus is off after every `./parar.sh` / `./iniciar.sh` cycle.
